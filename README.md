@@ -13,11 +13,18 @@ WhatsApp helper for pregnant domestic workers in Brazil: rights from curated law
 | `laws.md` | The law the app is allowed to use. Edit it, restart, done |
 
 ## Run it (laptop)
-1. `cp .env.example .env` and fill in the keys.
+1. `cp .env.example .env` and fill in the keys. `PUBLIC_URL` must have no spaces and no trailing slash.
 2. Terminal 1: `.venv/bin/uvicorn app:app --port 8000`
-3. Terminal 2: `ngrok http --url=<your-static-domain> 8000`
-4. Twilio console → Messaging → Try it out → WhatsApp sandbox settings → "When a message comes in": `https://<your-static-domain>/whatsapp`, method POST.
-5. From your phone, send the sandbox `join <code>` message, then say "oi".
+3. **Web demo:** open http://localhost:8000 (WhatsApp-style chat: voice notes, screenshots, drag and drop).
+
+### Real WhatsApp (Twilio trial)
+4. Terminal 2: `ngrok http --url=<your-static-domain> 8000`
+5. Twilio Console → Try out WhatsApp → Receive a message → Inbound message settings → **Custom**:
+   `https://<your-static-domain>/whatsapp`, method **POST**.
+6. From the verified phone, WhatsApp "oi" to the trial number. No join code.
+
+Each bot reply uses trial messages (text + voice note = 2, dossiê = 3). Test with the web chat or
+`simulate.py` (no messages used) and save WhatsApp for the final runs.
 
 ## Test
 `.venv/bin/python -m pytest -q test_offline.py` (no keys needed)
