@@ -5,6 +5,7 @@ Tunnel: ngrok http --url=$NGROK_DOMAIN 8000
 Twilio sandbox "When a message comes in": https://<NGROK_DOMAIN>/whatsapp  (POST)
 """
 import base64
+import json
 import logging
 import os
 import re
@@ -266,7 +267,8 @@ def _handle(form: dict) -> None:
             user["profile"]["due_date"] = out["due_date"]
         except ValueError:
             log.warning("ignoring bad due_date %r", out["due_date"])
-    reply = brain.fill_date(str(out.get("reply", ""))[:900], user["profile"].get("due_date"))
+    raw_reply = str(out.get("reply", ""))[:900]
+    reply = brain.fill_date(raw_reply, user["profile"].get("due_date"))
 
     if out.get("entry"):
         e = dict(out["entry"])
@@ -275,7 +277,8 @@ def _handle(form: dict) -> None:
             e["file"] = saved_file
         user["entries"].append(e)
         if saved_file and e.get("summary"):
-            history_note = f"{history_note} (anotado: {e['summary']})"
+            history_note = (f"[{e.get('source', 'print')} enviado; você leu a imagem nesta hora e registrou: "
+                            f"{e['summary']}] {text}").strip()
     if out.get("entry_update") and user["entries"]:
         user["entries"][-1].update(out["entry_update"])
 
@@ -283,7 +286,9 @@ def _handle(form: dict) -> None:
         reply = f"{CONSENT}\n\n{reply}"
 
     user["history"] += [{"role": "user", "content": history_note or "(vazio)"},
-                        {"role": "assistant", "content": reply}]
+                        # Store what Claude actually wrote (with the date tag, as JSON) so later turns
+                        # don't see dates "it wrote" against its own rules and try to correct them.
+                        {"role": "assistant", "content": json.dumps({"reply": raw_reply}, ensure_ascii=False)}]
     store.save(uid, user)
 
     say(phone, uid, reply)
