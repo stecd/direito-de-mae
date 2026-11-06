@@ -49,14 +49,23 @@ def _parse(raw: str) -> dict:
         return {"reply": raw}
 
 
-def think(history: list, content: list) -> dict:
+def entries_note(entries: list | None) -> str:
+    if not entries:
+        return ""
+    lines = [f"- {e.get('date_event', '?')} | {e.get('source', '?')} | {e.get('summary', '')}" for e in entries[-30:]]
+    return ("\n\nREGISTROS JÁ ANOTADOS (fatos confirmados; as imagens antigas não estão mais visíveis para você):\n"
+            + "\n".join(lines)
+            + "\nRegistros já anotados são definitivos; não os desminta nem corrija a menos que ela peça.")
+
+
+def think(history: list, content: list, entries: list | None = None) -> dict:
     """history: [{"role","content"(str)}]; content: blocks for the new user turn."""
     msgs = [{"role": h["role"], "content": h["content"]} for h in history]
     msgs.append({"role": "user", "content": content})
     resp = client.messages.create(
         model=MODEL,
         max_tokens=3000,
-        system=SYSTEM.replace("{today}", date.today().isoformat()),
+        system=SYSTEM.replace("{today}", date.today().isoformat()) + entries_note(entries),
         messages=msgs,
     )
     return _parse("".join(b.text for b in resp.content if b.type == "text"))

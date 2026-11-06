@@ -31,5 +31,4 @@ def speak(text: str, out_ogg: Path) -> Path:
          "-c:a", "libopus", "-b:a", "32k", "-ac", "1", "-ar", "48000", str(out_ogg)],
         check=True,
     )
-    mp3.unlink(missing_ok=True)
     return out_ogg

@@ -49,3 +49,24 @@ def test_store_roundtrip_and_delete():
     assert store.load(uid)["entries"] == [{"a": 1}]
     store.delete(uid)
     assert not store.exists(uid) and not (store.DATA_DIR / uid).exists()
+
+
+def test_sid_validation():
+    from app import valid_sid
+    assert valid_sid("123e4567-e89b-12d3-a456-426614174000")
+    assert not valid_sid("short") and not valid_sid("../../etc/passwd!") and not valid_sid(None)
+
+
+def test_spoken_dossie_matching():
+    from app import wants_dossie
+    assert wants_dossie("QUEROMEUDOCE", spoken=True)
+    assert not wants_dossie("QUEROMEUDOCE", spoken=False)
+    assert not wants_dossie("GOSTODEDOCE", spoken=True)
+    assert wants_dossie("DOSSIE", spoken=False)
+
+
+def test_rate_limiter():
+    from app import RateLimiter
+    rl = RateLimiter(limit=2, window=10)
+    assert rl.allow("a", 0) and rl.allow("a", 1) and not rl.allow("a", 2)
+    assert rl.allow("b", 2) and rl.allow("a", 11)

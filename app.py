@@ -52,6 +52,43 @@ def command(text: str) -> str:
     return re.sub(r"[^A-Z]", "", t.upper())
 
 
+SID_RE = re.compile(r"[a-zA-Z0-9-]{8,64}")
+MAX_UPLOAD = 10 * 1024 * 1024
+MAX_TEXT = 2000
+UNSUPPORTED = "Ainda não consigo ler esse tipo de arquivo. Mande print, foto, áudio ou escreva."
+IMAGE_TYPES = ("image/jpeg", "image/png", "image/webp", "image/gif")
+
+
+def valid_sid(sid) -> bool:
+    return isinstance(sid, str) and bool(SID_RE.fullmatch(sid))
+
+
+def wants_dossie(cmd: str, spoken: bool) -> bool:
+    if len(cmd) >= 60:
+        return False
+    if "DOSSI" in cmd:
+        return True
+    # Scribe sometimes hears "dossiê" as "doce"; accept only with MEU/QUERO/MANDA.
+    return spoken and "DOCE" in cmd and any(w in cmd for w in ("MEU", "QUERO", "MANDA"))
+
+
+class RateLimiter:
+    def __init__(self, limit: int = 20, window: float = 600):
+        self.limit, self.window, self.hits = limit, window, {}
+
+    def allow(self, key: str, now: float | None = None) -> bool:
+        import time
+        now = time.time() if now is None else now
+        q = [t for t in self.hits.get(key, []) if now - t < self.window]
+        ok = len(q) < self.limit
+        if ok:
+            q.append(now)
+        self.hits[key] = q
+        return ok
+
+
+LIMITER = RateLimiter(limit=80, window=600)  # shared demo Wi-Fi: ~80 msgs per 10 min per IP
+
 import contextvars  # noqa: E402
 OUTBOX: contextvars.ContextVar = contextvars.ContextVar("outbox", default=None)
 
@@ -93,7 +130,7 @@ def media(uid: str, name: str):
     path = (store.DATA_DIR / uid / name).resolve()
     if store.DATA_DIR.resolve() not in path.parents or not path.exists():
         raise HTTPException(404)
-    types = {".ogg": "audio/ogg", ".pdf": "application/pdf"}
+    types = {".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".pdf": "application/pdf"}
     return FileResponse(path, media_type=types.get(path.suffix, "application/octet-stream"))
 
 
@@ -106,10 +143,21 @@ def web_page():
 async def web_chat(request: Request):
     """WhatsApp-style web chat: same handler, replies returned as JSON."""
     form = await request.form()
-    data = {"From": "web:demo", "Body": form.get("text", ""), "NumMedia": "0"}
+    sid = form.get("sid")
+    if not valid_sid(sid):
+        raise HTTPException(400, "bad sid")
+    ip = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or (
+        request.client.host if request.client else "?")
+    if not LIMITER.allow(ip):
+        return {"messages": [{"text": "Muitas mensagens em pouco tempo. Espere uns minutos e tente de novo.", "media": None}]}
+    body = str(form.get("text", ""))[:MAX_TEXT]
+    data = {"From": f"web:{sid}", "Body": body, "NumMedia": "0"}
     up = form.get("file")
     if up is not None and hasattr(up, "read"):
-        data.update(NumMedia="1", RawMedia=await up.read(),
+        raw = await up.read(MAX_UPLOAD + 1)
+        if len(raw) > MAX_UPLOAD:
+            return {"messages": [{"text": "Esse arquivo é muito grande (máximo 10 MB). Tente um print ou um áudio mais curto.", "media": None}]}
+        data.update(NumMedia="1", RawMedia=raw,
                     MediaContentType0=(up.content_type or "").split(";")[0])
     box: list = []
     OUTBOX.set(box)
@@ -161,8 +209,16 @@ def _handle(form: dict) -> None:
             raw = Path(form["LocalMedia"]).read_bytes()
         else:
             raw = httpx.get(form["MediaUrl0"], auth=(SID, TOKEN), follow_redirects=True, timeout=30).content
+        if not (ctype.startswith("audio/") or ctype in IMAGE_TYPES):
+            send(phone, UNSUPPORTED)
+            return
         if ctype.startswith("audio/"):
-            heard = voice.transcribe(raw)
+            try:
+                heard = voice.transcribe(raw)
+            except Exception:
+                log.error("STT failed:\n%s", traceback.format_exc())
+                send(phone, "Não consegui ouvir esse áudio. Pode mandar de novo?")
+                return
             log.info("transcript: %s", heard)
 
     cmd = command(heard or text)
@@ -175,7 +231,7 @@ def _handle(form: dict) -> None:
 
     user = store.load(uid)
 
-    if "DOSSI" in cmd and len(cmd) < 60:
+    if wants_dossie(cmd, bool(heard)):
         pdf = dossie.build(user, store.media_dir(uid) / "dossie.pdf")
         n = len(user["entries"])
         say(phone, uid, f"Aqui está seu dossiê com {n} registro(s). Leve ao sindicato ou à Defensoria. Não sou advogada.",
@@ -194,7 +250,7 @@ def _handle(form: dict) -> None:
         if ctype.startswith("audio/"):
             history_note = f"[áudio] {heard}"
             content.append({"type": "text", "text": f"(Ela mandou um áudio. Transcrição:) {heard}"})
-        elif ctype in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+        elif ctype in IMAGE_TYPES:
             history_note = f"[print/foto enviado] {text}"
             content.append({"type": "image", "source": {"type": "base64", "media_type": ctype,
                                                         "data": base64.b64encode(raw).decode()}})
@@ -202,11 +258,15 @@ def _handle(form: dict) -> None:
     if not content:
         content.append({"type": "text", "text": text or "(mensagem vazia)"})
 
-    out = brain.think(user["history"], content)
+    out = brain.think(user["history"], content, user["entries"])
 
     if out.get("due_date"):
-        user["profile"]["due_date"] = out["due_date"]
-    reply = brain.fill_date(out.get("reply", ""), user["profile"].get("due_date"))
+        try:
+            date.fromisoformat(str(out["due_date"]))
+            user["profile"]["due_date"] = out["due_date"]
+        except ValueError:
+            log.warning("ignoring bad due_date %r", out["due_date"])
+    reply = brain.fill_date(str(out.get("reply", ""))[:900], user["profile"].get("due_date"))
 
     if out.get("entry"):
         e = dict(out["entry"])
@@ -214,6 +274,8 @@ def _handle(form: dict) -> None:
         if saved_file:
             e["file"] = saved_file
         user["entries"].append(e)
+        if saved_file and e.get("summary"):
+            history_note = f"{history_note} (anotado: {e['summary']})"
     if out.get("entry_update") and user["entries"]:
         user["entries"][-1].update(out["entry_update"])
 
