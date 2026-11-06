@@ -1,0 +1,7 @@
+.env
+data/
+.venv/
+__pycache__/
+server.log
+*.pdf
+.pytest_cache/

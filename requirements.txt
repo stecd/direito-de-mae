@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+twilio
+anthropic
+elevenlabs
+fpdf2
+python-dotenv
+httpx
+pytest
