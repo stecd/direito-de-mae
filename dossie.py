@@ -37,7 +37,7 @@ def _d(s) -> str:
     try:
         return date.fromisoformat(str(s)[:10]).strftime("%d/%m/%Y")
     except (ValueError, TypeError):
-        return str(s or "-")
+        return "sem data" if not s or "descon" in str(s).lower() else str(s)
 
 
 class _PDF(FPDF):
@@ -150,6 +150,7 @@ def build(user: dict, out: Path) -> Path:
         pdf.cell(w, 6, _t("Nenhum fato registrado ainda."), new_x="LMARGIN", new_y="NEXT")
     else:
         pdf.set_draw_color(*LINE)
+        pdf.set_fill_color(255, 255, 255)
         pdf.set_font(F, "", 9)
         pdf.set_text_color(30, 30, 30)
         with pdf.table(col_widths=(8, 20, 20, 24, 58, 32), line_height=4.6, padding=1.6,
@@ -175,7 +176,7 @@ def build(user: dict, out: Path) -> Path:
     # Help
     section("Onde buscar ajuda (gratuito)")
     for lead, h in HELP:
-        bullet(h.split(": ", 1)[-1] if ": " in h else h, lead + ":")
+        bullet(h, lead + ":")
 
     pdf.output(str(out))
     return out
