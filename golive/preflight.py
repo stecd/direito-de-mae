@@ -37,12 +37,12 @@ try:
 except Exception:
     mk_ok = False
 check(mk_ok, "MASTER_KEY is set and valid",
-      'python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  → paste into .env as MASTER_KEY=...  and into your password manager')
+      '.venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"  → paste into .env as MASTER_KEY=...  and into your password manager')
 check(not (ROOT / "data" / "_dev_master.key").exists(), "no development key left in data/",
       "delete data/_dev_master.key and data/_keys/ (test data only) BEFORE real users write")
 salt = os.environ.get("HASH_SALT", "")
 check(len(salt) >= 24 and salt != "troque-este-sal", "HASH_SALT is long and not the default",
-      'python -c "import secrets; print(secrets.token_urlsafe(32))"  → .env HASH_SALT=...  (never change it after real users exist)')
+      '.venv/bin/python -c "import secrets; print(secrets.token_urlsafe(32))"  → .env HASH_SALT=...  (never change it after real users exist)')
 for k in ("ANTHROPIC_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM", "PUBLIC_URL"):
     check(bool(os.environ.get(k)), f"{k} is set", f"add {k} to .env")
 check(os.environ.get("TWILIO_VALIDATE", "1") == "1", "TWILIO_VALIDATE=1 (signature check on)", "set TWILIO_VALIDATE=1")

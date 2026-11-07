@@ -32,7 +32,7 @@ rm -rf data/_keys data/_shared data/_dev_master.key data/*.json
 ```
 
 ```bash
-python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+.venv/bin/python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 Copy the output into **your password manager first**, then into `.env` as `MASTER_KEY=...`. If this key is lost, every stored record is unreadable. Never change it once real users exist.
