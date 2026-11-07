@@ -267,6 +267,8 @@ def _handle(form: dict) -> None:
             user["profile"]["due_date"] = out["due_date"]
         except ValueError:
             log.warning("ignoring bad due_date %r", out["due_date"])
+    if out.get("work_type") in brain.WORK_TYPES:
+        user["profile"]["work_type"] = out["work_type"]
     raw_reply = str(out.get("reply", ""))[:900]
     reply = brain.fill_date(raw_reply, user["profile"].get("due_date"))
 

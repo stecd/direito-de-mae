@@ -19,8 +19,48 @@ LIGHT = (243, 245, 249)
 LINE = (200, 205, 215)
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
+WORK_LABEL = {"clt": "empregada com carteira (CLT)", "domestica": "empregada doméstica",
+              "servidora": "servidora pública", "autonoma": "autônoma / contribuinte individual",
+              "desempregada": "desempregada", "rural": "trabalhadora rural (segurada especial)"}
+
+_ESTAB = ("Estabilidade da gestante:", "não pode ser dispensada sem justa causa desde a confirmação da gravidez "
+          "até 5 meses após o parto, mesmo no aviso prévio (ADCT art. 10, II, b; CLT art. 391-A; LC 150 art. 25).")
+_LIC = ("Licença-maternidade:", "120 dias, a partir de até 28 dias antes do parto; mais tempo se houver internação "
+        "ligada ao parto (CF art. 7º, XVIII; CLT art. 392, §§1º e 7º).")
+_GRAV = ("Durante a gravidez:", "dispensa para pelo menos 6 consultas e exames; afastamento de trabalho insalubre "
+         "(CLT art. 392, §4º; art. 394-A).")
+_DISC = ("Discriminação:", "exigir teste de gravidez é crime; demissão por gravidez dá direito a reintegração "
+         "ou remuneração em dobro, além de dano moral (Lei 9.029/95 arts. 2º e 4º).")
+_INSS = ("Salário-maternidade (INSS):", "120 dias, a partir de 28 dias antes do parto (Lei 8.213/91 art. 71); "
+         "o INSS tem 30 dias para conceder (Lei 8.213/91 art. 73-A, Lei 15.415/2026).")
+RIGHTS = {
+    "clt": [_ESTAB, _LIC, ("Salário durante a licença:", "integral, pago pela empresa e compensado pelo INSS "
+                           "(CLT art. 393; Lei 8.213/91 art. 72, §1º)."), _GRAV,
+            ("Empresa Cidadã:", "mais 60 dias se a empresa participa do programa; pedir até 1 mês após o parto "
+             "(Lei 11.770/2008 art. 1º)."), _DISC],
+    "domestica": [_ESTAB, _LIC, ("Salário-maternidade:", "pago diretamente pelo INSS à empregada doméstica, sem "
+                                 "carência (Lei 8.213/91 arts. 26, VI e 73, I)."),
+                  ("Sem carteira assinada:", "o vínculo de emprego doméstico pode ser reconhecido "
+                   "(LC 150/2015 art. 1º)."), _GRAV, _DISC],
+    "servidora": [("Licença à gestante:", "120 dias consecutivos, a partir do primeiro dia do nono mês, ou antes "
+                   "por prescrição médica (Lei 8.112/90 art. 207)."),
+                  ("Prorrogação:", "o órgão pode ter programa de mais 60 dias (Lei 11.770/2008 art. 2º)."),
+                  ("Amamentação:", "1 hora por dia até 6 meses (Lei 8.112/90 art. 209)."), _DISC],
+    "autonoma": [_INSS, ("Carência:", "10 contribuições mensais; menos se o parto for antecipado "
+                         "(Lei 8.213/91 art. 25, III e parágrafo único)."),
+                 ("Valor:", "média dos últimos 12 salários de contribuição, no mínimo um salário mínimo "
+                  "(Lei 8.213/91 art. 73, III).")],
+    "desempregada": [_INSS, ("Qualidade de segurada:", "mantida por 12 meses após a última contribuição, até 24 "
+                             "ou mais 12 se registrar o desemprego (Lei 8.213/91 art. 15)."),
+                     ("Valor:", "média dos últimos 12 salários de contribuição (Lei 8.213/91 art. 73, parágrafo "
+                      "único).")],
+    "rural": [_INSS, ("Segurada especial:", "um salário mínimo, comprovando atividade rural nos 12 meses antes "
+                      "(Lei 8.213/91 art. 39, parágrafo único).")],
+    None: [_ESTAB, _LIC, _INSS, _GRAV, _DISC],
+}
+
 HELP = [
-    ("Sindicato / FENATRAD", "Sindicato das trabalhadoras domésticas da sua cidade - fenatrad.org.br"),
+    ("Sindicato", "Sindicato da sua categoria. Domésticas: sindicato das domésticas / FENATRAD - fenatrad.org.br"),
     ("Defensoria Pública", "Defensoria Pública do seu estado: atendimento jurídico gratuito"),
     ("MPT", "Denúncia ao Ministério Público do Trabalho: mpt.mp.br"),
 ]
@@ -110,7 +150,21 @@ def build(user: dict, out: Path) -> Path:
 
     # Rights
     section("Direitos principais")
-    due = (user.get("profile") or {}).get("due_date")
+    profile = user.get("profile") or {}
+    work_type = profile.get("work_type")
+    if work_type in WORK_LABEL:
+        pdf.set_font(F, "", 10)
+        pdf.set_text_color(*GREY)
+        pdf.cell(w, 6, _t(f"Tipo de trabalho informado: {WORK_LABEL[work_type]}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+    due = profile.get("due_date")
+    has_estab = work_type in (None, "clt", "domestica")
+    if due and work_type == "servidora":
+        pdf.set_font(F, "B", 10.5)
+        pdf.set_text_color(30, 30, 30)
+        pdf.cell(w, 6, _t(f"Data prevista do parto: {_d(due)}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+        due = None
     if due:
         try:
             dd = date.fromisoformat(due)
@@ -123,29 +177,23 @@ def build(user: dict, out: Path) -> Path:
             pdf.set_text_color(*ROSE)
             pdf.set_font(F, "B", 10.5)
             pdf.cell(w / 2 - 4, 5, _t("Data prevista do parto"))
-            pdf.cell(w / 2 - 4, 5, _t("Estabilidade garantida até"), new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(w / 2 - 4, 5, _t("Estabilidade garantida até" if has_estab else ""), new_x="LMARGIN", new_y="NEXT")
             pdf.set_x(L + 4)
             pdf.set_text_color(30, 30, 30)
             pdf.set_font(F, "B", 13)
             pdf.cell(w / 2 - 4, 6, f"{dd:%d/%m/%Y}")
-            pdf.cell(w / 2 - 4, 6, f"{end:%d/%m/%Y}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(w / 2 - 4, 6, f"{end:%d/%m/%Y}" if has_estab else "", new_x="LMARGIN", new_y="NEXT")
             pdf.set_y(y + 17)
             ls, le = leave_window(dd)
             pdf.set_font(F, "", 9.5)
             pdf.set_text_color(*GREY)
             pdf.multi_cell(w, 5, _t(f"Licença-maternidade de 120 dias: pode começar a partir de {ls:%d/%m/%Y}; "
                                     f"se começar na data prevista do parto, vai até {le:%d/%m/%Y} "
-                                    "(LC 150 art. 25; CLT art. 392, §1º)."), new_x="LMARGIN", new_y="NEXT")
+                                    "(CLT art. 392, §1º; LC 150 art. 25; Lei 8.213 art. 71)."), new_x="LMARGIN", new_y="NEXT")
             pdf.ln(2)
         except ValueError:
             pass
-    rights = [
-        ("Estabilidade da gestante:", "não pode ser dispensada sem justa causa desde a confirmação da gravidez "
-         "até 5 meses após o parto (LC 150/2015 art. 25, parágrafo único; ADCT art. 10, II, b)."),
-        ("Licença-maternidade:", "120 dias (LC 150/2015 art. 25)."),
-        ("Salário-maternidade:", "pago diretamente pelo INSS à empregada doméstica (Lei 8.213/91 art. 73, I)."),
-        ("Sem carteira assinada:", "o vínculo de emprego doméstico pode ser reconhecido (LC 150/2015 art. 1º)."),
-    ]
+    rights = RIGHTS.get(work_type, RIGHTS[None])
     for lead, r in rights:
         bullet(r, lead)
     pdf.ln(3)

@@ -1,0 +1,59 @@
+name: Check laws
+
+# Weekly: did any law behind laws.md change? Opens (or updates) an issue when it did.
+# Nothing edits laws.md automatically: a person checks the new text first.
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # Mondays 09:00 UTC (06:00 Brasília)
+  workflow_dispatch:
+    inputs:
+      accept:
+        description: "Record the current law texts as the new baseline (after laws.md was updated)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx
+
+      - name: Accept baseline
+        if: ${{ inputs.accept || hashFiles('laws_baseline.json') == '' }}
+        run: python check_laws.py --accept
+
+      - name: Compare with baseline
+        id: check
+        run: |
+          set +e
+          python check_laws.py > report.md
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          cat report.md
+          # 1 = the checker itself crashed: fail the run (GitHub emails the owner), don't file a law issue.
+          [ "$code" = "1" ] && exit 1 || exit 0
+
+      - name: Commit status and baseline
+        run: |
+          git config user.name "law-check"
+          git config user.email "law-check@users.noreply.github.com"
+          git add laws_status.json laws_baseline.json
+          if ! git diff --cached --quiet; then git commit -m "Law check $(date +%F)" && git push; fi
+
+      - name: Open or update issue
+        if: steps.check.outputs.code == '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh issue list --label law-change --state open --json number -q '.[0].number')
+          if [ -n "$n" ]; then gh issue comment "$n" --body-file report.md
+          else gh label create law-change -c B60205 2>/dev/null; gh issue create --label law-change \
+            --title "Uma lei usada em laws.md pode ter mudado" --body-file report.md; fi
