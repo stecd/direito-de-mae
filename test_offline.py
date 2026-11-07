@@ -125,7 +125,10 @@ def test_law_warning_only_when_unreviewed_change(tmp_path: Path):
     assert law_warning(f) == ""
     f.write_text('{"checked": "2026-11-09", "changes": [], "dou_mentions": []}')
     assert law_warning(f) == ""
-    f.write_text('{"checked": "2026-11-09", "changes": ["CLT: art. 392 text changed"]}')
+    f.write_text('{"checked": "2026-11-09", "changes": ["CLT: art. 392 not found"], "law_changes": [], '
+                 '"dou_mentions": ["x"]}')
+    assert law_warning(f) == ""  # layout break or DOU mention alone: no warning to mothers
+    f.write_text('{"checked": "2026-11-09", "law_changes": ["CLT: art. 392 text changed"]}')
     assert "pode ter mudado" in law_warning(f)
 
 
@@ -171,3 +174,17 @@ def test_check_laws_detects_new_act_changed_and_missing_article(monkeypatch):
     snap = cl.snapshot(get=down)
     assert len(snap["errors"]) == 2 * len(cl.SOURCES["laws"])
     assert not [c for c in cl.compare(base, snap) if "changed" in c or "NEW" in c]  # outage is not a law change
+
+
+def test_check_laws_dou_bad_markup_is_an_error_not_a_crash():
+    import check_laws as cl
+    page = '<script id="_br_com_seatecnologia_in_buscadou_BuscaDouPortlet_params">{not json</script>'
+    hits, errors = cl.dou_mentions(get=lambda url: page)
+    assert hits == [] and errors and "unexpected page format" in errors[0]
+
+
+def test_check_laws_refuses_baseline_with_gaps(monkeypatch, tmp_path):
+    import check_laws as cl
+    monkeypatch.setattr(cl, "BASELINE", tmp_path / "b.json")
+    monkeypatch.setattr(cl, "snapshot", lambda: {"laws": {}, "errors": ["CLT: text: socket hang up"]})
+    assert cl.main(["--accept"]) == 3 and not (tmp_path / "b.json").exists()

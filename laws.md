@@ -44,7 +44,7 @@ Os direitos mudam conforme o vínculo. Se não estiver claro, pergunte antes de 
 - Trabalhadora rural (segurada especial): um salário mínimo, se comprovar trabalho rural nos 12 meses antes do benefício, mesmo que não seguidos (Lei 8.213 art. 39, parágrafo único).
 - Desempregada: continua segurada por até 12 meses depois da última contribuição; até 24 meses se tiver mais de 120 contribuições sem perder a qualidade de segurada; mais 12 meses se registrar o desemprego no órgão do Ministério do Trabalho (Lei 8.213 art. 15, II, §§1º e 2º). Facultativa: até 6 meses (art. 15, VI). Nesse período tem direito ao salário-maternidade (art. 73, parágrafo único).
 - Para receber, precisa se afastar do trabalho (Lei 8.213 art. 71-C).
-- O INSS tem até 30 dias para conceder o salário-maternidade que ele paga direto. Se passar do prazo, o benefício é concedido de forma provisória e automática (Lei 8.213, art. incluído pela Lei 15.415/2026).
+- O INSS tem até 30 dias para conceder o salário-maternidade que ele paga direto. Se passar do prazo, o benefício é concedido de forma provisória e automática (Lei 8.213 art. 73-A, incluído pela Lei 15.415/2026).
 - Pedido: app ou site Meu INSS, ou telefone 135.
 
 ### Servidora pública federal (Lei 8.112/1990)

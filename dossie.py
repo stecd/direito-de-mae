@@ -32,7 +32,7 @@ _GRAV = ("Durante a gravidez:", "dispensa para pelo menos 6 consultas e exames; 
 _DISC = ("Discriminação:", "exigir teste de gravidez é crime; demissão por gravidez dá direito a reintegração "
          "ou remuneração em dobro, além de dano moral (Lei 9.029/95 arts. 2º e 4º).")
 _INSS = ("Salário-maternidade (INSS):", "120 dias, a partir de 28 dias antes do parto (Lei 8.213/91 art. 71); "
-         "o INSS tem 30 dias para conceder (Lei 15.415/2026).")
+         "o INSS tem 30 dias para conceder (Lei 8.213/91 art. 73-A, Lei 15.415/2026).")
 RIGHTS = {
     "clt": [_ESTAB, _LIC, ("Salário durante a licença:", "integral, pago pela empresa e compensado pelo INSS "
                            "(CLT art. 393; Lei 8.213/91 art. 72, §1º)."), _GRAV,

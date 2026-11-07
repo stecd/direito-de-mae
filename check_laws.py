@@ -15,6 +15,7 @@ laws.md by hand; a wrong legal claim reaching a mother is worse than a stale one
 
   python check_laws.py            # compare with laws_baseline.json, write laws_status.json
   python check_laws.py --accept   # after updating laws.md: record the current state as baseline
+Exit codes: 0 nothing new · 2 something for a person to review · 3 baseline refused (sources unreadable).
 """
 import hashlib
 import html
@@ -123,11 +124,25 @@ def dou_mentions(days: int = 8, get=fetch) -> tuple[list[str], list[str]]:
             # The search page embeds its results as JSON in this script tag. Not yet confirmed
             # against a live response (in.gov.br dropped every connection while this was built);
             # if the markup differs, this finds nothing and the Senado checks still run.
-            m = re.search(r'id="_br_com_seatecnologia_in_buscadou_BuscaDouPortlet_params"[^>]*>(.*?)</script>', page, re.S)
-            items = json.loads(m.group(1)).get("jsonArray", []) if m else []
+            try:
+                m = re.search(r'id="_br_com_seatecnologia_in_buscadou_BuscaDouPortlet_params"[^>]*>(.*?)</script>',
+                              page, re.S)
+                items = json.loads(m.group(1)).get("jsonArray", []) if m else []
+            except (ValueError, AttributeError) as e:
+                errors.append(f"DOU '{term}': unexpected page format: {e}")
+                continue
             for it in items:
                 hits.append(f"{it.get('pubDate', '?')} | {it.get('title', '?')} | https://www.in.gov.br/web/dou/-/{it.get('urlTitle', '')}")
     return sorted(set(hits)), errors
+
+
+# Only these mean the law itself moved. "Not found" usually means the site's layout changed,
+# and DOU mentions of "licença-maternidade" are common; both go to the issue, not to mothers.
+LAW_CHANGE_MARKERS = ("NEW amending act", "text changed")
+
+
+def law_changes(changes: list[str]) -> list[str]:
+    return [c for c in changes if any(k in c for k in LAW_CHANGE_MARKERS)]
 
 
 def compare(base: dict, now: dict) -> list[str]:
@@ -153,6 +168,12 @@ def compare(base: dict, now: dict) -> list[str]:
 def main(argv: list[str]) -> int:
     now = snapshot()
     if "--accept" in argv:
+        if now["errors"] and "--force" not in argv:
+            # A baseline with gaps would silently stop watching those laws forever.
+            print("Not recording a baseline: some sources could not be read. Retry later, or pass --force.")
+            for e in now["errors"]:
+                print("  !", e)
+            return 3
         BASELINE.write_text(json.dumps({"accepted": date.today().isoformat(), **now}, ensure_ascii=False, indent=1))
         print(f"Baseline recorded ({len(now['errors'])} fetch errors).")
         for e in now["errors"]:
@@ -162,14 +183,17 @@ def main(argv: list[str]) -> int:
     changes = compare(base, now)
     dou, dou_err = dou_mentions()
     status = {"checked": date.today().isoformat(), "baseline": base.get("accepted"), "changes": changes,
-              "dou_mentions": dou, "errors": now["errors"] + dou_err}
-    STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=1))
+              "law_changes": law_changes(changes), "dou_mentions": dou, "errors": now["errors"] + dou_err}
+    # Rewrite the file only when something other than the date moved, so a quiet week is no commit.
+    old = json.loads(STATUS.read_text()) if STATUS.exists() else {}
+    if {k: v for k, v in old.items() if k != "checked"} != {k: v for k, v in status.items() if k != "checked"}:
+        STATUS.write_text(json.dumps(status, ensure_ascii=False, indent=1))
     report = ["# Law check " + status["checked"], f"Baseline accepted: {status['baseline'] or 'none'}", ""]
     report += ["## Changes since baseline"] + ([f"- {c}" for c in changes] or ["- none"])
     report += ["", "## DOU publications naming these laws (last 8 days)"] + ([f"- {d}" for d in dou] or ["- none found"])
     report += ["", "## Fetch errors (not law changes)"] + ([f"- {e}" for e in status["errors"]] or ["- none"])
     print("\n".join(report))
-    return 1 if changes or dou else 0
+    return 2 if changes or dou else 0  # 2 = something for a person to look at; 1 = the script crashed
 
 
 if __name__ == "__main__":

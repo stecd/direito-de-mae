@@ -61,7 +61,7 @@ def law_warning(status_file: Path = STATUS_FILE) -> str:
         st = json.loads(status_file.read_text())
     except (OSError, ValueError):
         return ""
-    if not (st.get("changes") or st.get("dou_mentions")):
+    if not st.get("law_changes"):  # layout breaks and DOU mentions go to the issue only
         return ""
     return ("\n\nAVISO DO SISTEMA: a verificação semanal das leis (" + str(st.get("checked")) + ") encontrou "
             "uma possível mudança que ainda não foi revisada. Ao falar de prazos ou valores, acrescente em uma frase "
