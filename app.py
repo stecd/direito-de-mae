@@ -614,7 +614,7 @@ def _handle(form: dict) -> None:
 
 def _converse(phone: str, uid: str, user: dict, text: str, content: list, history_note: str,
               saved_file: str | None = None) -> None:
-    out = brain.think(user["history"], content, user["entries"])
+    out = brain.think(user["history"], content, user["entries"], user["profile"].get("work_type"))
 
     if out.get("due_date"):
         try:

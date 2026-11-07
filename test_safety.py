@@ -139,12 +139,12 @@ def test_keywords_skip_ai():
 
 class Bot:
     def __init__(self, monkeypatch, brain_out=None):
-        self.sent, self.calls = [], []
+        self.sent, self.calls, self.work_types = [], [], []
         self.brain_out = brain_out or {"reply": "Resposta da IA."}
         monkeypatch.delenv("ELEVENLABS_VOICE_ID", raising=False)
         monkeypatch.setattr(app, "send", lambda to, body="", media=None: self.sent.append((body, media)))
         monkeypatch.setattr(app.brain, "think",
-                            lambda h, c, e=None: (self.calls.append(c), dict(self.brain_out))[1])
+                            lambda h, c, e=None, w=None: (self.calls.append(c), self.work_types.append(w), dict(self.brain_out))[2])
         self.phone = f"web:test-{os.urandom(4).hex()}"
         self.uid = store.user_id(self.phone)
 
@@ -319,7 +319,7 @@ def test_slow_message_cannot_bring_data_back_after_apagar(monkeypatch):
     bot.sent.clear()
     inside, release = threading.Event(), threading.Event()
 
-    def slow_think(h, c, e=None):
+    def slow_think(h, c, e=None, w=None):
         inside.set()
         release.wait(5)
         return {"reply": "ok", "entry": {"summary": "patroa gritou"}}
