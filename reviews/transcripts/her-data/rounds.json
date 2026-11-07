@@ -20,10 +20,10 @@
   "round": 2,
   "verdict": "APPROVE",
   "findings": [
-   {"n": 1, "label": "suggestion", "text": "Legacy plaintext media with an unreadable key raises out of read_media (500 / resumo crash).", "response": "Fixed: inside the try; test added.", "commit": "round-2 follow-up"},
-   {"n": 2, "label": "suggestion", "text": "Cleanup queue is emptied before processing; a restart mid-loop loses SIDs.", "response": "Fixed: file rewritten only at the end; test added.", "commit": "round-2 follow-up"},
-   {"n": 3, "label": "suggestion", "text": "Lock map grows forever.", "response": "Fixed: janitor prunes idle locks; test added.", "commit": "round-2 follow-up"},
-   {"n": 4, "label": "question", "text": "The lock is per process; multiple workers bring the race back.", "response": "Added to the go-live checklist: one worker, one instance, until a file/DB lock exists.", "commit": "round-2 follow-up"},
+   {"n": 1, "label": "suggestion", "text": "Legacy plaintext media with an unreadable key raises out of read_media (500 / resumo crash).", "response": "Fixed: inside the try; test added.", "commit": "a5bd719"},
+   {"n": 2, "label": "suggestion", "text": "Cleanup queue is emptied before processing; a restart mid-loop loses SIDs.", "response": "Fixed: file rewritten only at the end; test added.", "commit": "a5bd719"},
+   {"n": 3, "label": "suggestion", "text": "Lock map grows forever.", "response": "Fixed: janitor prunes idle locks; test added.", "commit": "a5bd719"},
+   {"n": 4, "label": "question", "text": "The lock is per process; multiple workers bring the race back.", "response": "Added to the go-live checklist: one worker, one instance, until a file/DB lock exists.", "commit": "a5bd719"},
    {"n": 5, "label": "suggestion", "text": "Unreadable users fall back to 90 days even after SALVAR.", "response": "Accepted as is: the data is unreadable anyway.", "commit": null}
   ]
  }
