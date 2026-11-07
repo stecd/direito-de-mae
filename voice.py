@@ -16,6 +16,21 @@ def transcribe(audio: bytes) -> str:
     return result.text
 
 
+def forget(text: str, voice_id: str | None = None, history=None) -> int:
+    """Delete this text's entries from ElevenLabs' speech history, which otherwise keeps the text
+    of every reply in our account. Needs the API key's history read + write permission.
+    Returns how many entries were deleted."""
+    history = history or client.history
+    items = history.list(page_size=20, voice_id=voice_id or os.environ.get("ELEVENLABS_VOICE_ID"),
+                         sort_direction="desc").history
+    gone = 0
+    for item in items:
+        if item.text == text:
+            history.delete(item.history_item_id)
+            gone += 1
+    return gone
+
+
 def speak(text: str, out_ogg: Path) -> Path:
     """Text -> mp3 (ElevenLabs) -> OGG Opus (WhatsApp voice-note format)."""
     chunks = client.text_to_speech.convert(

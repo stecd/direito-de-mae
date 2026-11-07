@@ -378,6 +378,13 @@ def spoken(text: str) -> tuple[bytes, bytes]:
         VOICE_CACHE.mkdir(exist_ok=True)
         ogg_f.write_bytes(pair[0])
         mp3_f.write_bytes(pair[1])
+    else:
+        # A personal reply: ElevenLabs keeps its text in our account history unless we delete it.
+        try:
+            if not voice.forget(text):
+                log.error("voice: reply not found in ElevenLabs history, so not deleted")
+        except Exception:
+            log.error("voice: could not delete reply from ElevenLabs history:\n%s", scrubbed_tb())
     return pair
 
 
