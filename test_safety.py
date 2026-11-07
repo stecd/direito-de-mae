@@ -158,11 +158,13 @@ class Bot:
 
 
 def onboarded(monkeypatch, brain_out=None):
-    bot = Bot(monkeypatch, brain_out)
+    bot = Bot(monkeypatch)
     bot.msg("oi")
     bot.msg("1")
-    bot.msg("sim")
+    bot.msg("sim")  # her "oi" is answered here, with the plain fake reply
     bot.calls.clear()
+    if brain_out:
+        bot.brain_out = brain_out  # from now on the fake AI returns this
     return bot
 
 
@@ -305,3 +307,123 @@ def test_fixed_messages_are_voiced_once_then_cached(monkeypatch, tmp_path):
     app.spoken("Sua patroa disse algo pessoal")
     assert len(calls) == 3  # personal replies are never cached
     assert len(list((tmp_path / "cache").iterdir())) == 2  # only the fixed message's ogg + mp3
+
+
+# ---------- Round 1 review fixes ----------
+
+def test_slow_message_cannot_bring_data_back_after_apagar(monkeypatch):
+    """A message still inside the AI call when APAGAR is confirmed must not re-save her file."""
+    import threading
+    bot = onboarded(monkeypatch)
+    bot.msg("APAGAR")  # pending delete
+    bot.sent.clear()
+    inside, release = threading.Event(), threading.Event()
+
+    def slow_think(h, c, e=None):
+        inside.set()
+        release.wait(5)
+        return {"reply": "ok", "entry": {"summary": "patroa gritou"}}
+    monkeypatch.setattr(app.brain, "think", slow_think)
+    a = threading.Thread(target=app.handle, args=(
+        {"From": bot.phone, "Body": "ela gritou comigo hoje de manhã na cozinha", "NumMedia": "0"},))
+    a.start()
+    inside.wait(5)  # message A is now inside the AI call
+    b = threading.Thread(target=app.handle, args=({"From": bot.phone, "Body": "APAGAR", "NumMedia": "0"},))
+    b.start()
+    release.set()
+    a.join(5)
+    b.join(5)
+    # The two messages run one after the other: A cancels the pending delete and saves,
+    # then B asks for confirmation again. Without the lock, B deleted and A wrote it all back.
+    assert store.exists(bot.uid)
+    assert "APAGAR de novo" in " ".join(x for x, _ in bot.sent)
+    assert store.load(bot.uid)["profile"].get("pending_delete")
+    store.delete(bot.uid)
+
+
+def test_spoken_negation_never_confirms_delete():
+    for spoken in ("não, não quero apagar não", "nao apagar", "eu não quero apagar nada"):
+        cmd = app.command(spoken)
+        assert not app.confirms_delete(cmd), spoken
+        assert app.keyword(cmd, spoken=True) != "apagar", spoken
+    assert app.confirms_delete(app.command("Apagar")) and app.confirms_delete(app.command("sim"))
+    assert app.keyword(app.command("quero apagar tudo"), spoken=True) == "apagar"
+
+
+def test_spoken_negation_with_pending_delete_keeps_data(monkeypatch):
+    bot = onboarded(monkeypatch)
+    bot.msg("APAGAR")
+    monkeypatch.setattr(app, "_download", lambda form, phone: (b"ogg", "audio/ogg", "não, não quero apagar não"))
+    bot.msg("")
+    assert store.exists(bot.uid)
+    store.delete(bot.uid)
+
+
+def test_changed_master_key_still_lets_her_delete(monkeypatch):
+    from cryptography.fernet import Fernet
+    bot = onboarded(monkeypatch)
+    monkeypatch.setenv("MASTER_KEY", Fernet.generate_key().decode())  # operator switched keys
+    assert "APAGAR" in bot.msg("oi")  # explains instead of crashing in a loop
+    bot.msg("APAGAR")
+    assert not store.exists(bot.uid) and not (store.KEYS_DIR / f"{bot.uid}.key").exists()
+
+
+def test_sweep_deletes_unreadable_files_by_age(monkeypatch):
+    from cryptography.fernet import Fernet
+    uid = store.user_id("whatsapp:+551195")
+    store.save(uid, {"history": [], "entries": [], "profile": {}})
+    monkeypatch.setenv("MASTER_KEY", Fernet.generate_key().decode())
+    assert uid not in store.sweep(now=time.time() + 10 * store.DAY)
+    assert uid in store.sweep(now=time.time() + 100 * store.DAY)
+
+
+def test_mode_change_does_not_trap_her(monkeypatch):
+    bot = onboarded(monkeypatch)
+    bot.msg("MUDAR")
+    assert "APAGAR de novo" in bot.msg("APAGAR")  # the keyword gets through
+    bot.msg("MUDAR")
+    bot.calls.clear()
+    bot.msg("hoje a patroa gritou comigo na frente das crianças e disse que vou ser demitida")
+    assert bot.calls  # a real report goes to the AI instead of being read as a mode choice
+    assert bot.user()["profile"]["onboarding"] == "done"
+    store.delete(bot.uid)
+
+
+def test_report_words_are_not_mode_choices():
+    assert parse_mode("minha mulher") is None and parse_mode("eles falaram") is None
+    assert parse_mode("qualquer um") is None
+
+
+def test_consent_refusal_leaves_no_key_or_folder(monkeypatch):
+    bot = Bot(monkeypatch)
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "v")
+    monkeypatch.setenv("VOICE_REPLIES", "1")
+    monkeypatch.setattr(app, "spoken", lambda text: (b"ogg", b"mp3"))
+    bot.msg("oi")
+    bot.msg("2")
+    bot.msg("não")
+    assert not store.exists(bot.uid)
+    assert not (store.KEYS_DIR / f"{bot.uid}.key").exists() and not (store.DATA_DIR / bot.uid).exists()
+
+
+def test_legacy_plaintext_media_still_reaches_the_resumo():
+    uid = store.user_id("whatsapp:+551196")
+    store.save(uid, {"history": [], "entries": [], "profile": {}})
+    (store.media_dir(uid) / "prova_old.jpg").write_bytes(b"\xff\xd8old-jpeg")
+    assert store.read_media(uid, "prova_old.jpg") == b"\xff\xd8old-jpeg"
+    assert (store.DATA_DIR / uid / "prova_old.jpg").read_bytes().startswith(b"gAAAAA")  # now encrypted
+    store.delete(uid)
+
+
+def test_legacy_user_without_last_seen_expires_by_file_age():
+    uid = store.user_id("whatsapp:+551197")
+    (store.DATA_DIR / f"{uid}.json").write_text('{"history": [], "entries": [], "profile": {}}')
+    assert uid in store.sweep(now=time.time() + 100 * store.DAY)
+
+
+def test_tracebacks_in_logs_drop_the_exception_message():
+    try:
+        raise ValueError("Joana disse que vai me demitir")
+    except ValueError:
+        out = app.scrubbed_tb()
+    assert "ValueError" in out and "Joana" not in out

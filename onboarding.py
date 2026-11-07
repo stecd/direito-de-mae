@@ -26,9 +26,12 @@ SAFETY_TIP = ("Pronto! Uma dica de segurança: se alguém pode pegar seu celular
               "Me conte o que está acontecendo, ou mande print ou áudio.")
 MODE_CHANGE_Q = ("Como você quer que eu responda agora? 1 para mensagem escrita, 2 para áudio, ou 3 para os dois.")
 
-_TEXT_WORDS = ("escrit", "texto", "mensage", "ler", "letra", "digit")
-_AUDIO_WORDS = ("audio", "voz", "ouvir", "falad", "falar", "fala")
-_BOTH_WORDS = (" dois ", " duas ", " ambos ", " ambas ", " os 2 ", " as 2 ")  # not "tudo": "tudo bem"
+# Whole words or word stems only: "ler" must not match "mulher", "fala" must not match "falaram".
+_TEXT_STEMS = ("escrit", "texto", "mensage", "digit", "letra")
+_TEXT_EXACT = {"1", "ler", "lendo"}
+_AUDIO_STEMS = ("audio", "falad")
+_AUDIO_EXACT = {"2", "voz", "ouvir", "falar", "escutar"}
+_BOTH_EXACT = {"3", "dois", "duas", "ambos", "ambas"}
 
 
 def norm(text: str) -> str:
@@ -39,12 +42,11 @@ def norm(text: str) -> str:
 def parse_mode(text: str, spoken: bool = False) -> str | None:
     """'1'/'mensagem escrita' -> text, '2'/'áudio' -> audio, '3'/'os dois' -> both.
     A voice-note answer with no clear choice means audio."""
-    t = " " + norm(text) + " "
-    t = re.sub(r"mensage[mn]s? de (voz|audio)", "audio", t)
+    t = re.sub(r"mensage[mn]s? de (voz|audio)", "audio", norm(text))
     tokens = t.split()
-    has_text = "1" in tokens or any(w in t for w in _TEXT_WORDS)
-    has_audio = "2" in tokens or any(w in t for w in _AUDIO_WORDS)
-    if "3" in tokens or any(w in t for w in _BOTH_WORDS) or (has_text and has_audio):
+    has_text = any(w in _TEXT_EXACT or w.startswith(_TEXT_STEMS) for w in tokens)
+    has_audio = any(w in _AUDIO_EXACT or w.startswith(_AUDIO_STEMS) for w in tokens)
+    if any(w in _BOTH_EXACT for w in tokens) or (has_text and has_audio):
         return BOTH
     if has_text:
         return TEXT

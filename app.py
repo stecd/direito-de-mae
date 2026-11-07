@@ -17,6 +17,7 @@ import os
 import re
 import tempfile
 import time
+import threading
 import traceback
 import unicodedata
 import uuid
@@ -65,6 +66,15 @@ SAVED = ("Combinado. Vou guardar seus registros por 1 ano depois da sua última 
          "Para apagar antes, é só pedir.")
 
 
+def scrubbed_tb() -> str:
+    """Traceback with file/line/function and the exception TYPE only. Exception messages can
+    echo her words (a bad date, model output), so they never reach the log."""
+    import sys
+    etype, _, tb = sys.exc_info()
+    frames = "".join(f"  {f.filename.rsplit('/', 1)[-1]}:{f.lineno} in {f.name}\n" for f in traceback.extract_tb(tb))
+    return f"{frames}{etype.__name__ if etype else 'Error'}"
+
+
 def command(text: str) -> str:
     t = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     return re.sub(r"[^A-Z]", "", t.upper())
@@ -94,9 +104,19 @@ def wants_resumo(cmd: str, spoken: bool) -> bool:
     return spoken and "DOCE" in cmd and any(w in cmd for w in ("MEU", "QUERO", "MANDA"))
 
 
+def says_apagar(cmd: str) -> bool:
+    """Spoken 'apagar' only when it leads the sentence and nothing negates it:
+    'não, não quero apagar não' must never count."""
+    return len(cmd) < 40 and "NAO" not in cmd and cmd.startswith(("APAGAR", "QUEROAPAGAR", "PODEAPAGAR", "SIMAPAGAR"))
+
+
+def confirms_delete(cmd: str) -> bool:
+    return cmd in ("APAGAR", "SIM", "SIMAPAGAR", "PODEAPAGAR") or says_apagar(cmd)
+
+
 def keyword(cmd: str, spoken: bool) -> str | None:
     """Exact shortcut words skip the AI call. Anything else goes to Claude for intent."""
-    if cmd == "APAGAR" or (spoken and "APAGAR" in cmd and len(cmd) < 40):
+    if cmd == "APAGAR" or (spoken and says_apagar(cmd)):
         return "apagar"
     if cmd == "SALVAR":
         return "salvar"
@@ -132,10 +152,14 @@ OUTBOX: contextvars.ContextVar = contextvars.ContextVar("outbox", default=None)
 CLEANUP_FILE = store.DATA_DIR / "_twilio_cleanup.json"  # message SIDs only, no content
 
 
+CLEANUP_LOCK = threading.Lock()
+
+
 def _queue_cleanup(sid: str) -> None:
-    q = _load_cleanup()
-    q.append({"sid": sid, "at": time.time(), "tries": 0})
-    CLEANUP_FILE.write_text(json.dumps(q))
+    with CLEANUP_LOCK:
+        q = _load_cleanup()
+        q.append({"sid": sid, "at": time.time(), "tries": 0})
+        CLEANUP_FILE.write_text(json.dumps(q))
 
 
 def _load_cleanup() -> list:
@@ -151,8 +175,11 @@ def twilio_cleanup(now: float | None = None, client=None) -> int:
     retry failures a few times. Returns how many were deleted."""
     now = time.time() if now is None else now
     client = client or twilio
+    with CLEANUP_LOCK:
+        queue = _load_cleanup()
+        CLEANUP_FILE.write_text("[]")  # new SIDs queued while we work are appended to an empty list
     keep, done = [], 0
-    for item in _load_cleanup():
+    for item in queue:
         if now - item["at"] < 120:
             keep.append(item)
             continue
@@ -167,7 +194,8 @@ def twilio_cleanup(now: float | None = None, client=None) -> int:
                 keep.append(item)
             else:
                 log.error("twilio cleanup gave up on a message after 6 tries")
-    CLEANUP_FILE.write_text(json.dumps(keep))
+    with CLEANUP_LOCK:
+        CLEANUP_FILE.write_text(json.dumps(_load_cleanup() + keep))
     return done
 
 
@@ -180,7 +208,7 @@ async def _janitor():
             if SID != "none" and os.environ.get("DRY_RUN") != "1":
                 twilio_cleanup()
         except Exception:
-            log.error("janitor failed:\n%s", traceback.format_exc())
+            log.error("janitor failed:\n%s", scrubbed_tb())
         await asyncio.sleep(CLEANUP_EVERY)
 
 
@@ -290,12 +318,22 @@ async def web_chat(request: Request):
     return {"messages": box}
 
 
+_LOCKS: dict = {}
+_LOCKS_GUARD = threading.Lock()
+
+
+def user_lock(uid: str) -> threading.Lock:
+    with _LOCKS_GUARD:
+        return _LOCKS.setdefault(uid, threading.Lock())
+
+
 def handle(form: dict) -> None:
     to = form.get("From", "")
     try:
-        _handle(form)
+        with user_lock(store.user_id(to)):  # one message at a time per user
+            _handle(form)
     except Exception:
-        log.error(traceback.format_exc())
+        log.error("handler failed:\n%s", scrubbed_tb())
         send(to, "Tive um problema agora. Pode mandar de novo?")
     finally:
         msid = form.get("MessageSid")
@@ -356,7 +394,7 @@ def say(phone: str, uid: str, text: str, media: str | None = None, mode: str | N
             name = store.write_media(uid, base + ".ogg", ogg)
         send(phone, media=media_url(uid, name))
     except Exception:
-        log.error("TTS failed:\n%s", traceback.format_exc())
+        log.error("TTS failed:\n%s", scrubbed_tb())
         if not sent_text:
             send(phone, text, media)
 
@@ -431,7 +469,7 @@ def _download(form: dict, phone: str):
             try:
                 heard = voice.transcribe(raw)
             except Exception:
-                log.error("STT failed:\n%s", traceback.format_exc())
+                log.error("STT failed:\n%s", scrubbed_tb())
                 send(phone, "Não consegui ouvir esse áudio. Pode mandar de novo?")
                 return None
     return raw, ctype, heard
@@ -450,9 +488,14 @@ def _onboard(phone: str, uid: str, user: dict, said: str, spoken: bool, is_new: 
         store.save(uid, user)
         say(phone, uid, f"{ob.WELCOME}\n\n{ob.MODE_Q}", mode=ob.BOTH)
         return True
+    if step == "mode_change" and (keyword(command(said), spoken) or len(said.split()) > 8):
+        p["onboarding"] = "done"  # she moved on: treat this as a normal message
+        return False
     if step in ("mode", "mode_change"):
-        m = ob.parse_mode(said, spoken)
+        m = ob.parse_mode(said, spoken) if len(said.split()) <= 8 else None
         if m is None:
+            if step == "mode" and said.strip() and not p.get("pending_first"):
+                p["pending_first"] = said.strip()[:600]
             store.save(uid, user)
             say(phone, uid, ob.MODE_AGAIN, mode=ob.BOTH)
             return True
@@ -479,7 +522,7 @@ def _onboard(phone: str, uid: str, user: dict, said: str, spoken: bool, is_new: 
             return True
         if ob.is_no(said):
             store.delete(uid)
-            say(phone, uid, ob.CONSENT_NO, mode=p.get("mode"))
+            say(phone, "_shared", ob.CONSENT_NO, mode=p.get("mode"))
             return True
         store.save(uid, user)
         say(phone, uid, ob.CONSENT_AGAIN, mode=p.get("mode"))
@@ -500,12 +543,21 @@ def _handle(form: dict) -> None:
     raw, ctype, heard = got
     said = heard or text
     cmd = command(said)
-    user = store.load(uid)
+    try:
+        user = store.load(uid)
+    except store.Unreadable:
+        log.error("a user file could not be decrypted (MASTER_KEY changed?)")
+        if keyword(cmd, bool(heard)) == "apagar":
+            store.delete(uid)
+            say(phone, "_shared", DELETED)
+        else:
+            send(phone, "Não consigo abrir o que você guardou antes. Mande APAGAR para apagar tudo e começar de novo.")
+        return
     p = user["profile"]
 
     # 2. A pending delete is confirmed only by APAGAR (or SIM) sent again within 10 minutes.
     pending = p.pop("pending_delete", None)
-    if pending and time.time() - pending < CONFIRM_TTL and (cmd in ("APAGAR", "SIM") or (heard and "APAGAR" in cmd)):
+    if pending and time.time() - pending < CONFIRM_TTL and confirms_delete(cmd):
         mode = p.get("mode")
         store.delete(uid)
         say(phone, "_shared", DELETED, mode=mode)
@@ -516,7 +568,7 @@ def _handle(form: dict) -> None:
         return
 
     # 3. Onboarding interview (new users, consent, changing text/audio).
-    if p.get("onboarding") in ("mode", "consent") and cmd == "APAGAR":
+    if p.get("onboarding") in ("mode", "consent") and keyword(cmd, bool(heard)) == "apagar":
         store.delete(uid)  # nothing of hers is kept yet beyond her first message
         say(phone, "_shared", DELETED, mode=p.get("mode"))
         return
