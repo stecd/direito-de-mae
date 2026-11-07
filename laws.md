@@ -92,7 +92,7 @@ Os direitos mudam conforme o vínculo. Se não estiver claro, pergunte antes de 
 
 ## Licença-paternidade (para ela saber o que o pai tem)
 - Hoje: 5 dias (ADCT art. 10, §1º); mais 15 dias em empresa do Programa Empresa Cidadã (Lei 11.770 art. 1º, II).
-- A partir de 1º/01/2027 (Lei 15.371/2026): 10 dias em 2027, 15 dias em 2028 e 20 dias a partir de 2029 (o último prazo depende da meta fiscal), pagos pelo INSS como salário-paternidade (art. 11). Se a mãe ou o bebê ficarem internados, a licença do pai é prorrogada e volta a contar depois da alta (CLT art. 392, §8º). Se não houver mãe no registro, ou se só o pai adotar, a licença-paternidade fica igual à licença-maternidade (CLT art. 392-D).
+- A partir de 1º/01/2027 (Lei 15.371/2026): 10 dias em 2027, 15 dias em 2028 e 20 dias a partir de 2029 (o último prazo depende da meta fiscal), (Lei 15.371 art. 11). O pai recebe salário-paternidade: se for empregado CLT, a empresa paga e é reembolsada; se for doméstico, autônomo ou desempregado, a Previdência Social paga direto (Lei 8.213 arts. 73-D e 73-E, incluídos pela Lei 15.371/2026). Se a mãe ou o bebê ficarem internados, a licença do pai é prorrogada e volta a contar depois da alta (CLT art. 392, §8º). Se não houver mãe no registro, ou se só o pai adotar, a licença-paternidade fica igual à licença-maternidade (CLT art. 392-D).
 
 ## Outros direitos da empregada doméstica (LC 150/2015)
 - Carteira assinada: o patrão tem 48 horas para anotar (art. 9º).
