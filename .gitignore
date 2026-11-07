@@ -6,4 +6,3 @@ server.log
 *.pdf
 .pytest_cache/
 .DS_Store
-reviews/

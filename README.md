@@ -66,6 +66,16 @@ If something changed, it opens a GitHub issue with the details. If the change is
 
 Not yet done: the checker has only run against saved test pages, not live, because the build machine couldn't reach these sites directly. Its first run on GitHub records the baseline.
 
+## Reviews
+Every substantive change goes through a pull request, a review by a second agent, and a Review page explaining why the change was right. The pages live in [`reviews/`](reviews/) as HTML (the record) and are published as claude.ai artifacts (for reading and commenting).
+
+| Review | What it covers | PR |
+|---|---|---|
+| [Every Mother, Every Article](https://claude.ai/artifact/WETAz9meLCujuUv9d4z9SJ) · [file](reviews/2026-11-06-review-every-mother.html) | `laws.md` checked against official texts, expanded to every working mother, weekly law check | [#2](https://github.com/stecd/direito-de-mae/pull/2) |
+| [The Dates She Can Plan Around](https://claude.ai/artifact/AkQ3RiKB9oi4jWbWc3ZLjF) · [file](reviews/2026-11-06-review-plan-around.html) | Maternity-leave dates computed in code, asking for a missing due date, evidence images in the dossiê | [#1](https://github.com/stecd/direito-de-mae/pull/1) |
+
+All reviews: [Reviews hub](https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr). Each review's PR description and review rounds are in [`reviews/transcripts/`](reviews/transcripts/).
+
 ## Stack
 Python + FastAPI · Claude (`claude-sonnet-5-5`, reads screenshots directly) · ElevenLabs (speech-to-text + voice replies) · ffmpeg · fpdf2 · WhatsApp-style web chat (a Twilio WhatsApp path is in progress on the `twilio` branch).
 

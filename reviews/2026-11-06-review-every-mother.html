@@ -1,0 +1,145 @@
+<title>Every Mother, Every Article</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column, same tokens as the Reviews index */
+  :root{
+    --ground:#EDF0F3; --raised:#FFFFFF; --sunk:#E3E8ED;
+    --ink:#141B22; --muted:#5A6773; --faint:#8A96A2; --rule:#D5DCE3;
+    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --done:#0f7b6c; --done-soft:#dff0ec; --wip:#9a6a00; --wip-soft:#f8efd7;
+    --add:#e6f4ea; --addink:#1a6b34; --del:#fbe9eb; --delink:#9b2335;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06);
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+  :root[data-theme="dark"]{
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.6;
+    padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  a{color:var(--accent)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--sunk);padding:1px 5px;border-radius:4px;word-break:break-word}
+  .mast{background:var(--raised);border:1px solid var(--rule);border-top:3px solid var(--ink);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .eyebrow a{color:inherit;text-decoration:none}.eyebrow a:hover{text-decoration:underline}
+  h1{font-size:30px;font-weight:600;margin:0;text-wrap:balance;line-height:1.2}
+  h2{font-size:21px;font-weight:600;margin:0 0 8px;text-wrap:balance}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-family:var(--sans);font-size:11.5px}
+  .chip{padding:3px 9px;border-radius:99px;font-weight:700;background:var(--sunk);color:var(--muted)}
+  .chip.wait{background:var(--wip-soft);color:var(--wip)}
+  .chip.done{background:var(--done-soft);color:var(--done)}
+  .note{font-family:var(--sans);font-size:13px;color:var(--muted);margin:12px 0 0}
+  section p{margin:0 0 10px;max-width:66ch}
+  .dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+  .dates div{background:var(--raised);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+  .dates b{display:block;font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums}
+  .dates span{font-family:var(--sans);font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .diff{border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:10px 0 14px;background:var(--raised)}
+  .diff .path{font-family:var(--mono);font-size:12px;padding:6px 10px;background:var(--sunk);color:var(--muted)}
+  .diff pre{margin:0;padding:8px 0;font-family:var(--mono);font-size:12.5px;line-height:1.5;overflow-x:auto;white-space:pre}
+  .diff pre span{display:block;padding:0 10px}
+  .a{background:var(--add);color:var(--addink)} .d{background:var(--del);color:var(--delink)}
+  .callout{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:15px;max-width:66ch}
+  ul.plain{margin:0;padding-left:20px;max-width:66ch}
+  ul.plain li{margin-bottom:6px}
+  .lbl{font-family:var(--sans);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--muted);margin-right:6px}
+  .tsum{font-family:var(--sans);font-size:14px;margin:0 0 8px}.tsum.green b{color:var(--done)}.tsum.red b{color:var(--delink)}
+  details summary{font-family:var(--sans);font-size:13px;cursor:pointer;color:var(--accent)}
+  ul.tests{list-style:none;padding:0;margin:8px 0;font-size:13px;display:grid;gap:3px}
+  ul.tests li{display:flex;gap:8px}ul.tests .ok span{color:var(--done)}ul.tests .bad span{color:var(--delink)}
+  pre.cmd{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:8px 10px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+  .rev{font-family:var(--sans);font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Direito de Mãe • <a href="https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr" target="_blank" rel="noopener">All Reviews</a></p>
+    <h1>Every Mother, Every Article</h1>
+    <div class="chips">
+      <span class="chip done" data-review-branch="review/every-mother">✓ Reviewed · merged 06 Nov 2026</span>
+      <span class="chip">Short review</span>
+      <span class="chip">PR <a href="https://github.com/stecd/direito-de-mae/pull/2" target="_blank" rel="noopener">stecd/direito-de-mae#2</a></span>
+    </div>
+    <p class="note">Short review: what matters here is which sources were used, what they corrected and what's still open, and that reads best as one scroll. It's stacked on PR 1, so merge that first. To comment, select any text and use the comment control in the artifact viewer.</p>
+  </header>
+
+  <section>
+    <h2>What changed</h2>
+    <p>The bot used to know one kind of mother: a domestic worker. Now it asks what kind of work she does and answers from the rules for that work:</p>
+    <div class="dates">
+      <div><span>CLT and domestic</span><b>Job protection</b></div>
+      <div><span>INSS (self-employed, MEI, unemployed, rural)</span><b>10 contributions</b></div>
+      <div><span>Federal servant</span><b>From 9th month</b></div>
+      <div><span>Empresa Cidadã</span><b>+60 days</b></div>
+    </div>
+    <p>Everything in <code>laws.md</code> was checked word for word against the official compiled texts. A weekly job now watches those laws and opens a GitHub issue when one changes.</p>
+  </section>
+
+  <section>
+    <h2>Where the law text came from</h2>
+    <div class="callout">planalto.gov.br blocked every request: the shell, the built-in browser, three fetch agents and your own Chrome. The text came instead from the Senado's and the Câmara's official compilations, which are as official as planalto. Every recent amending law was also read in its original published form, so each compiled article is cross-checked against the law that changed it. The binding text is still the DOU's.</div>
+    <p>The check changed three things in the old <code>laws.md</code>:</p>
+    <div class="diff"><div class="path">laws.md</div><pre><span class="d">-- CF art. 7º, parágrafo único (EC 72/2013): estendeu às domésticas ...</span><span class="a">+(cited as CF art. 7º, §1º: article 7º has no parágrafo único)</span><span class="d">-- Vale mesmo que a patroa não soubesse da gravidez.</span><span class="d">-- Se for dispensada nesse período: pode pedir reintegração ou indenização.</span><span class="a">+- Demissão por discriminação: ... voltar ao trabalho recebendo todo o período,</span><span class="a">+  ou receber em dobro (Lei 9.029 art. 4º).</span></pre></div>
+    <p>The two deleted claims may well be true in court, but no article we read says them, and the bot may only say what it can cite.</p>
+    <p>It also turned up four laws from the last 16 months that the old file didn't know about: Zika (+60 days), hospital stays (leave runs 120 days from discharge), the INSS 30-day deadline, and the father's new leave from 01/01/2027 (10, then 15, then 20 days, the last stage depending on a fiscal target).</p>
+  </section>
+
+  <section>
+    <h2>The weekly check</h2>
+    <p><code>check_laws.py</code> runs every Monday and looks at three things against a recorded baseline:</p>
+    <ul class="plain">
+      <li>the Senado's index of each law, which lists every act that amended it;</li>
+      <li>a fingerprint of each watched article;</li>
+      <li>DOU publications from the last week that name these laws.</li>
+    </ul>
+    <p>Only a new amending act or changed article text reaches mothers, as one added sentence: "a lei pode ter mudado". Layout changes and DOU mentions go to the GitHub issue only. Nothing edits <code>laws.md</code> automatically.</p>
+  </section>
+
+  <section>
+    <h2>The review</h2>
+    <p>The co-worker spot-checked the legal claims against the Senado text and stress-tested the checker. Round 1 requested changes and round 2 approved.</p>
+    <ul class="plain">
+      <li><span class="lbl">fixed</span>The INSS 30-day deadline had no article number and wasn't watched. It now cites Lei 8.213 art. 73-A, and Leis 15.415 and 15.371 are watched sources.</li>
+      <li><span class="lbl">fixed</span>A crash in the checker would have been filed as "a law changed". Crashes now fail the run, and only real changes open an issue.</li>
+      <li><span class="lbl">fixed</span>A website redesign would have put "the law may have changed" on every answer to every mother. Now only an amending act or changed article text triggers it.</li>
+      <li><span class="lbl">fixed</span>An outage during the first baseline would have silently stopped the checker watching that law. Recording a baseline now refuses unless every source was read.</li>
+      <li><span class="lbl">fixed</span>The father's pay was attributed to the INSS. A CLT employer pays and is reimbursed (Lei 8.213 arts. 73-D, 73-E).</li>
+      <li><span class="lbl">confirmed</span>The co-worker fetched Lei 15.371 itself and confirmed the 10/15/20-day schedule and its fiscal condition.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Limits</h2>
+    <ul class="plain">
+      <li>The checker has never run against the live sites; only saved test pages. Its first Monday run on GitHub is the real test. If the Senado markup differs from what the parser expects, it reports "not found", and you'll see that in the issue.</li>
+      <li>The DOU search format is a guess, because in.gov.br dropped every connection during the build. If it's wrong, the DOU signal finds nothing, and the two Senado signals still work.</li>
+      <li>The warning only reaches mothers if the server pulls the repo. There's no production deployment yet, so nothing pulls today.</li>
+      <li>STF ADI 7.495 (equal 120 + 60 days for all mothers) is recorded in the Senado's index but couldn't be read on the STF site, so the bot doesn't rely on it. Servants who adopt, and state or municipal servants, go to HR, the union and the Defensoria.</li>
+      <li>Not run live against Claude: whether it reliably asks the kind of work before giving deadlines is untested.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tests</h2>
+    <!-- GENERATED from pytest junit xml; do not edit by hand -->
+<p class="tsum green"><b>20 of 20 passed</b> · <code>test_offline.py</code> · 5.9s</p>
+<details><summary>All 20 tests in test_offline.py</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_dates</code></li><li class="ok"><span>✓</span><code>test_fill_date</code></li><li class="ok"><span>✓</span><code>test_parse_bad_json_falls_back_to_text</code></li><li class="ok"><span>✓</span><code>test_command_normalization</code></li><li class="ok"><span>✓</span><code>test_pdf_with_tricky_characters</code></li><li class="ok"><span>✓</span><code>test_store_roundtrip_and_delete</code></li><li class="ok"><span>✓</span><code>test_sid_validation</code></li><li class="ok"><span>✓</span><code>test_spoken_dossie_matching</code></li><li class="ok"><span>✓</span><code>test_rate_limiter</code></li><li class="ok"><span>✓</span><code>test_leave_window_and_tags</code></li><li class="ok"><span>✓</span><code>test_missing_due_date_asks_once</code></li><li class="ok"><span>✓</span><code>test_pdf_embeds_evidence_images</code></li><li class="ok"><span>✓</span><code>test_leave_tag_alone_still_asks</code></li><li class="ok"><span>✓</span><code>test_pdf_skips_corrupt_image_and_wraps_rows</code></li><li class="ok"><span>✓</span><code>test_dossie_rights_follow_work_type</code></li><li class="ok"><span>✓</span><code>test_law_warning_only_when_unreviewed_change</code></li><li class="ok"><span>✓</span><code>test_check_laws_parses_index_and_articles</code></li><li class="ok"><span>✓</span><code>test_check_laws_detects_new_act_changed_and_missing_article</code></li><li class="ok"><span>✓</span><code>test_check_laws_dou_bad_markup_is_an_error_not_a_crash</code></li><li class="ok"><span>✓</span><code>test_check_laws_refuses_baseline_with_gaps</code></li></ul></details>
+<pre class="cmd">.venv/bin/python -m pytest -q test_offline.py
+python check_laws.py            # live check against the Senado, Câmara and DOU (needs network)</pre>
+  </section>
+
+  <footer class="rev">
+    <b>Revisions</b><br>v1 (current): first publish, covers <code>b27c23a</code> after review round 2.
+  </footer>
+</div>

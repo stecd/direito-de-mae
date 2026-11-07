@@ -1,0 +1,89 @@
+[
+ {
+  "round": 1,
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "n": 1,
+    "label": "blocking",
+    "text": "INSS 30-day deadline cited without an article number and not watched by check_laws.",
+    "response": "Fixed: cites Lei 8.213 art. 73-A (incluído pela Lei 15.415/2026); Lei 15.415 added as a watched source with DOU term.",
+    "commit": "d2f5545"
+   },
+   {
+    "n": 2,
+    "label": "blocking",
+    "text": "Paternity schedule (Lei 15.371 art. 11) not watched and not verified.",
+    "response": "Fixed tracking: Lei 15.371 added (arts. 11, 12, 14). Verified: the 10/15/20-day schedule and the fiscal-target condition were quoted verbatim from the Senado's text of the law during research. CLT 392 §8 is inside art. 392, which is fingerprinted.",
+    "commit": "d2f5545"
+   },
+   {
+    "n": 3,
+    "label": "blocking",
+    "text": "Any crash exits 1 and is filed as a law change; DOU JSON parse outside try.",
+    "response": "Fixed: changes exit 2, crashes fail the run; DOU parse errors become reported errors. Test added.",
+    "commit": "d2f5545"
+   },
+   {
+    "n": 4,
+    "label": "suggestion",
+    "text": "Layout break or common DOU mentions would show a warning to every mother.",
+    "response": "Fixed: law_warning fires only on new amending acts or changed article text.",
+    "commit": "d2f5545"
+   },
+   {
+    "n": 5,
+    "label": "question",
+    "text": "How does the running bot get laws_status.json?",
+    "response": "From its checkout; README now says the deployment must git pull. No expiry on purpose: an unreviewed change should keep warning."
+   },
+   {
+    "n": 6,
+    "label": "suggestion",
+    "text": "--accept with fetch errors records gaps that are never watched.",
+    "response": "Fixed: --accept refuses (exit 3) unless every source was read; --force overrides. Test added.",
+    "commit": "d2f5545"
+   },
+   {
+    "n": 7,
+    "label": "suggestion",
+    "text": "Weekly bot commit even when nothing changed; push precedence.",
+    "response": "Fixed: status file rewritten only when something besides the date changed; explicit if/then for commit+push.",
+    "commit": "d2f5545"
+   },
+   {
+    "n": 8,
+    "label": "suggestion",
+    "text": "Last-match article heading fragile on pages that quote other laws.",
+    "response": "Acknowledged, kept: the watched articles on those pages are not quoted elsewhere; a wrong match shows up as a text change for a person to check, not as silence."
+   },
+   {
+    "n": 9,
+    "label": "question",
+    "text": "Was 394-A III / §3 checked against the Câmara text?",
+    "response": "Yes: quoted verbatim from the Câmara compiled CLT, including both ADI 5.938 notes on incisos II and III."
+   }
+  ]
+ },
+ {
+  "round": 2,
+  "verdict": "APPROVE",
+  "findings": [
+   {
+    "label": "suggestion",
+    "text": "Paternity pay attributed to INSS under art. 11; CLT employers pay and are reimbursed (8.213 arts. 73-D/73-E).",
+    "response": "Fixed, and arts. 73-B to 73-G added to the watch list."
+   },
+   {
+    "label": "suggestion",
+    "text": "First-run accept failure repeats weekly.",
+    "response": "README tells the reader to run the workflow with accept once the sites are back."
+   },
+   {
+    "label": "question",
+    "text": "Deployment pull still open.",
+    "response": "Documented as a deployment requirement; there is no production deployment yet."
+   }
+  ]
+ }
+]

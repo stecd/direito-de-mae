@@ -1,0 +1,7 @@
+[{"round":1,"verdict":"APPROVE","findings":[
+ {"n":1,"label":"suggestion","text":"Unreadable last image skips the row-end set_xy; help section overlaps thumbnails.","response":"Fixed: images are opened and converted before layout; unreadable files never enter the grid.","commit":"see round-1 fix"},
+ {"n":2,"label":"suggestion","text":"Full-res phone photos bloat the PDF sent over WhatsApp.","response":"Fixed: thumbnail to 1200px before embedding; test asserts 4 photos of 3000x4000 stay under 2MB."},
+ {"n":3,"label":"suggestion","text":"Image test only checks size grew; no wrap, no corrupt input.","response":"Fixed: new test with 4 images (row wrap) plus a garbage-bytes .jpg last."},
+ {"n":4,"label":"question","text":"ASK_DUE repeats on every tagged reply while date is unknown.","response":"Intended: it only appears when the answer depends on the date, and the date is what makes the answer concrete. Kept."},
+ {"n":5,"label":"question","text":"PLAN.md marks web chat Done but this PR doesn't touch it.","response":"Already shipped in c4a3939 (web.html + /web routes). Claim is correct."},
+ {"n":6,"label":"suggestion","text":"No test for LEAVE_TAG alone with no due date.","response":"Fixed: test_leave_tag_alone_still_asks."}]}]

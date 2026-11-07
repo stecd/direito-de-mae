@@ -1,0 +1,130 @@
+<title>The Dates She Can Plan Around</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column, same tokens as the Reviews index */
+  :root{
+    --ground:#EDF0F3; --raised:#FFFFFF; --sunk:#E3E8ED;
+    --ink:#141B22; --muted:#5A6773; --faint:#8A96A2; --rule:#D5DCE3;
+    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --done:#0f7b6c; --done-soft:#dff0ec; --wip:#9a6a00; --wip-soft:#f8efd7;
+    --add:#e6f4ea; --addink:#1a6b34; --del:#fbe9eb; --delink:#9b2335;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06);
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+  :root[data-theme="dark"]{
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.6;
+    padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  a{color:var(--accent)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--sunk);padding:1px 5px;border-radius:4px;word-break:break-word}
+  .mast{background:var(--raised);border:1px solid var(--rule);border-top:3px solid var(--ink);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .eyebrow a{color:inherit;text-decoration:none}.eyebrow a:hover{text-decoration:underline}
+  h1{font-size:30px;font-weight:600;margin:0;text-wrap:balance;line-height:1.2}
+  h2{font-size:21px;font-weight:600;margin:0 0 8px;text-wrap:balance}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-family:var(--sans);font-size:11.5px}
+  .chip{padding:3px 9px;border-radius:99px;font-weight:700;background:var(--sunk);color:var(--muted)}
+  .chip.wait{background:var(--wip-soft);color:var(--wip)}
+  .chip.done{background:var(--done-soft);color:var(--done)}
+  .note{font-family:var(--sans);font-size:13px;color:var(--muted);margin:12px 0 0}
+  section p{margin:0 0 10px;max-width:66ch}
+  .dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+  .dates div{background:var(--raised);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+  .dates b{display:block;font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums}
+  .dates span{font-family:var(--sans);font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .diff{border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:10px 0 14px;background:var(--raised)}
+  .diff .path{font-family:var(--mono);font-size:12px;padding:6px 10px;background:var(--sunk);color:var(--muted)}
+  .diff pre{margin:0;padding:8px 0;font-family:var(--mono);font-size:12.5px;line-height:1.5;overflow-x:auto;white-space:pre}
+  .diff pre span{display:block;padding:0 10px}
+  .a{background:var(--add);color:var(--addink)} .d{background:var(--del);color:var(--delink)}
+  .callout{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:15px;max-width:66ch}
+  ul.plain{margin:0;padding-left:20px;max-width:66ch}
+  ul.plain li{margin-bottom:6px}
+  .lbl{font-family:var(--sans);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--muted);margin-right:6px}
+  .tsum{font-family:var(--sans);font-size:14px;margin:0 0 8px}.tsum.green b{color:var(--done)}.tsum.red b{color:var(--delink)}
+  details summary{font-family:var(--sans);font-size:13px;cursor:pointer;color:var(--accent)}
+  ul.tests{list-style:none;padding:0;margin:8px 0;font-size:13px;display:grid;gap:3px}
+  ul.tests li{display:flex;gap:8px}ul.tests .ok span{color:var(--done)}ul.tests .bad span{color:var(--delink)}
+  pre.cmd{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:8px 10px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+  .rev{font-family:var(--sans);font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Direito de Mãe • <a href="https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr" target="_blank" rel="noopener">All Reviews</a></p>
+    <h1>The Dates She Can Plan Around</h1>
+    <div class="chips">
+      <span class="chip done" data-review-branch="review/plan-around">✓ Reviewed · merged 06 Nov 2026</span>
+      <span class="chip">Short review</span>
+      <span class="chip">PR <a href="https://github.com/stecd/direito-de-mae/pull/1" target="_blank" rel="noopener">stecd/direito-de-mae#1</a></span>
+    </div>
+    <p class="note">Short review: three small features that all use the existing date mechanism, so this page is one scroll. To comment, select any text and use the comment control in the artifact viewer.</p>
+  </header>
+
+  <section>
+    <h2>What changed</h2>
+    <p>For a mother with a due date of 20/01/2027, the bot can now answer "quando começa minha licença?" with exact dates, still computed by code:</p>
+    <div class="dates">
+      <div><span>Due date</span><b>20/01/2027</b></div>
+      <div><span>Leave can start from</span><b>23/12/2026</b></div>
+      <div><span>Leave ends (starting on due date)</span><b>19/05/2027</b></div>
+      <div><span>Job protection until</span><b>20/06/2027</b></div>
+    </div>
+    <p>If she hasn't said her due date yet, any reply that needs it gives the rule in words and ends with "Quando o nenê deve nascer? Me diga a data e eu calculo seus prazos." The dossiê PDF now shows the leave window in the rights box and a grid of the prints and photos she sent, each labelled with its timeline number.</p>
+  </section>
+
+  <section>
+    <h2>The decision worth reading</h2>
+    <div class="callout">The leave dates use the same rule as the job-protection date: Claude writes a tag, <code>[DATAS_LICENCA]</code>, and Python replaces it. The model never writes a date. That is the trust claim in the pitch, so the new feature had to use it too.</div>
+    <div class="diff"><div class="path">brain.py</div><pre><span class="a">+def leave_window(due: date) -> tuple[date, date]:</span><span class="a">+    """LC 150 art. 25 + CLT 392 §1º: earliest start 28 days before birth;</span><span class="a">+    120 days counted from the birth end on day 119 after it."""</span><span class="a">+    return due - timedelta(days=28), due + timedelta(days=119)</span></pre></div>
+    <p>The end date is phrased as "se começar na data prevista do parto, vai até". The real end depends on when leave actually starts, and the bot can't know that yet, so the wording claims only what's true.</p>
+    <p>The legal basis went into <code>laws.md</code>, because the bot may cite only what's in that file:</p>
+    <div class="diff"><div class="path">laws.md</div><pre><span class="d">-- LC 150/2015 art. 25: licença-maternidade de 120 dias, sem prejuízo do emprego e do salário.</span><span class="a">+- LC 150/2015 art. 25: licença-maternidade de 120 dias, sem prejuízo do emprego e do salário, nos termos da CLT.</span><span class="a">+- CLT art. 392, §1º (aplicável pela LC 150 art. 25): a licença pode começar entre o 28º dia</span><span class="a">+  antes do parto e o dia do parto. O sistema calcula essas datas.</span></pre></div>
+    <p><b>Not changed:</b> the job-protection math, storage, commands and the webhook. The letter to the patroa was deliberately not built: it alerts the employer, so it needs your decision and the sindicato's input first.</p>
+  </section>
+
+  <section>
+    <h2>The review</h2>
+    <p>The co-worker checked the date math and legal claims against <code>laws.md</code>, then looked for ways the PDF could break. It approved in round 1. Four things changed because of it:</p>
+    <ul class="plain">
+      <li><span class="lbl">fixed</span>An unreadable final image (for example a HEIC photo saved as .jpg) skipped the end-of-row cursor move, so the "Onde buscar ajuda" section printed on top of the thumbnails. Images are now opened before layout, and unreadable ones never enter the grid.</li>
+      <li><span class="lbl">fixed</span>Full-resolution phone photos would have made the PDF too big to send over WhatsApp. They are now shrunk to 1200px first: four 3000×4000 photos stay under 2 MB.</li>
+      <li><span class="lbl">fixed</span>The image test only checked that the file got bigger. It now runs four images (the row wraps) plus a garbage-bytes .jpg, following the workspace rule about testing with corrupted input.</li>
+      <li><span class="lbl">fixed</span>Added a test for the leave tag on its own with no due date.</li>
+      <li><span class="lbl">kept</span>The due-date question repeats on every reply that needs it until she answers. That's deliberate: it only shows up when the answer depends on the date.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Limits</h2>
+    <ul class="plain">
+      <li>Not run live against Claude or WhatsApp. Whether Claude reliably writes <code>[DATAS_LICENCA]</code> instead of making up a date is untested. Run the demo story once with "quando começa minha licença?" before merging, or after if you accept the risk.</li>
+      <li>The <code>laws.md</code> summary of CLT 392 §1º has not been checked against planalto.gov.br. The file's own header asks for that check before a demo.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tests</h2>
+    <!-- GENERATED from pytest junit xml; do not edit by hand -->
+<p class="tsum green"><b>14 of 14 passed</b> · <code>test_offline.py</code> · 6.0s</p>
+<details><summary>All 14 tests in test_offline.py</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_dates</code></li><li class="ok"><span>✓</span><code>test_fill_date</code></li><li class="ok"><span>✓</span><code>test_parse_bad_json_falls_back_to_text</code></li><li class="ok"><span>✓</span><code>test_command_normalization</code></li><li class="ok"><span>✓</span><code>test_pdf_with_tricky_characters</code></li><li class="ok"><span>✓</span><code>test_store_roundtrip_and_delete</code></li><li class="ok"><span>✓</span><code>test_sid_validation</code></li><li class="ok"><span>✓</span><code>test_spoken_dossie_matching</code></li><li class="ok"><span>✓</span><code>test_rate_limiter</code></li><li class="ok"><span>✓</span><code>test_leave_window_and_tags</code></li><li class="ok"><span>✓</span><code>test_missing_due_date_asks_once</code></li><li class="ok"><span>✓</span><code>test_pdf_embeds_evidence_images</code></li><li class="ok"><span>✓</span><code>test_leave_tag_alone_still_asks</code></li><li class="ok"><span>✓</span><code>test_pdf_skips_corrupt_image_and_wraps_rows</code></li></ul></details>
+<pre class="cmd">.venv/bin/python -m pytest -q test_offline.py</pre>
+  </section>
+
+  <footer class="rev">
+    <b>Revisions</b><br>v1 (current): first publish, covers <code>da8b236</code> after review round 1.
+  </footer>
+</div>

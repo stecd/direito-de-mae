@@ -1,0 +1,220 @@
+<title>Direito de Mãe Reviews</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  REVIEW INDEX TEMPLATE (from the `review` skill)
+
+  Placeholders to fill at init:
+    {{PROJECT}}   project display name        Direito de Mãe · WhatsApp rights helper  masthead eyebrow line
+    Every substantive change to the bot, the law corpus or the dossiê, with the reasoning the diff cannot show.      one-sentence purpose line   Direito de Mãe · reviews are the record of why each change was right footer credit line
+    {{CONTEXT_LINKS}} header link chips (or remove the .context div)
+
+  CARD TEMPLATE — insert newest-first under <ol class="log">, after the
+  "REVIEW CARDS" marker. Keep counts in .count in sync.
+
+  <li>                                              (add class="is-done" when completed)
+    <a class="rev" href="ARTIFACT_URL" target="_blank" rel="noopener">
+      <div class="top">
+        <span class="ttl">TITLE</span>
+        <span class="date">DD Mon YYYY</span>
+      </div>
+      <p class="desc">One or two sentences: what changed and why it matters. No round-by-round history.</p>
+      <div class="foot">
+        <span class="kind change">Change</span>            (or class="kind plan">Plan)
+        <span>covers <code>HASH</code> · v1</span>
+        <span class="status done" style="margin-left:auto">✓ Completed</span>
+      </div>
+      <div class="steps">
+        <span class="no">○ Quiz</span>                  (done: class="ok">✓ Quiz done)
+        <span class="no">○ Comments addressed</span>       (done: class="ok">✓)
+        <span class="ok">✓ Merged 06 Nov 2026</span>                   (done: class="ok">✓ — merge gated on the user's pass)
+        <span class="ok">✓ Submitted</span>
+      </div>
+    </a>
+  </li>
+
+  STATUS CHIP VARIANTS (drive only from the user's own pass — see skill §4):
+    <span class="status wip">● Awaiting review</span>
+    <span class="status wip">● Comments to address</span>
+    <span class="status wip">● Ready to merge</span>      (comments addressed, waiting on the user's go-ahead)
+    <span class="status done">✓ Completed</span>           (and add is-done to the <li>)
+  A merge is the user's sign-off, so merging sets ✓ Completed (skill §5).
+  Plans and walkthroughs have no merge: they complete on the user's pass.
+-->
+<style>
+  :root{
+    --ground:#EDF0F3; --raised:#FFFFFF; --sunk:#E3E8ED;
+    --ink:#141B22; --muted:#5A6773; --faint:#8A96A2;
+    --rule:#D5DCE3; --rail:#C4CEd7;
+    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --done:#0f7b6c; --done-soft:#dff0ec;
+    --wip:#9a6a00; --wip-soft:#f8efd7;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06);
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0F141A; --raised:#161D25; --sunk:#1C242D;
+      --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+      --rule:#26303A; --rail:#2E3A45;
+      --accent:#6ab0f3; --accent-soft:#16283d;
+      --done:#4fd1bd; --done-soft:#12332e;
+      --wip:#e5b25a; --wip-soft:#3a2f16;
+      --shadow:0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF;
+    --faint:#6C7A87; --rule:#26303A; --rail:#2E3A45; --accent:#6ab0f3; --accent-soft:#16283d;
+    --done:#4fd1bd; --done-soft:#12332e; --wip:#e5b25a; --wip-soft:#3a2f16;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);
+    font-size:16px;line-height:1.55;padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));-webkit-font-smoothing:antialiased}
+  .wrap{max-width:800px;margin:0 auto}
+  a{color:var(--accent);text-underline-offset:2px}
+  code{font-family:var(--mono);font-size:.82em;background:var(--sunk);padding:1px 5px;border-radius:4px;
+    color:var(--ink);word-break:break-word}
+  .sans{font-family:var(--sans)}
+
+  /* context slot — swappable per project */
+  .context{display:flex;gap:9px;flex-wrap:wrap;align-items:center;font-family:var(--sans);
+    font-size:12.5px;margin-bottom:14px}
+  .context .lbl{text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;font-weight:700;
+    color:var(--faint)}
+  .context a{display:inline-flex;align-items:center;gap:6px;background:var(--raised);border:1px solid var(--rule);
+    border-radius:8px;padding:6px 12px;text-decoration:none;color:var(--ink);font-weight:600;
+    box-shadow:var(--shadow);transition:border-color .12s ease}
+  .context a:hover{border-color:var(--accent)}
+  .context a .ic{color:var(--accent)}
+
+  /* masthead */
+  .mast{background:var(--raised);border:1px solid var(--rule);border-radius:14px;
+    padding:24px 26px;box-shadow:var(--shadow);border-top:3px solid var(--ink)}
+  .mast .row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .crumbs a{color:inherit;text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+  .crumbs a:hover{text-decoration:underline;color:var(--accent)}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+  h1{font-family:var(--serif);font-size:30px;font-weight:600;letter-spacing:-.01em;margin:0;
+    text-wrap:balance}
+  .lede{font-size:15px;color:var(--muted);margin:10px 0 0;max-width:58ch;line-height:1.55}
+  .count{font-family:var(--sans);font-size:12px;color:var(--muted);margin-top:14px;
+    display:flex;gap:16px;flex-wrap:wrap}
+  .count b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+  .btn{font-family:var(--sans);appearance:none;font-size:13px;font-weight:600;cursor:pointer;
+    border:1px solid var(--rule);background:var(--raised);color:var(--ink);border-radius:9px;
+    padding:8px 13px;display:inline-flex;align-items:center;gap:7px;box-shadow:var(--shadow);
+    transition:border-color .12s ease}
+  .btn:hover{border-color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* timeline of reviews */
+  ol.log{list-style:none;margin:20px 0 0;padding:0;position:relative}
+  ol.log::before{content:"";position:absolute;left:8px;top:8px;bottom:18px;width:2px;background:var(--rail)}
+  ol.log > li{position:relative;padding-left:36px;margin:0 0 16px}
+  ol.log > li:last-child{margin-bottom:0}
+  ol.log > li::before{content:"";position:absolute;left:0;top:20px;width:18px;height:18px;border-radius:50%;
+    background:var(--raised);border:3px solid var(--rail);box-shadow:0 0 0 4px var(--ground)}
+  ol.log > li.is-done::before{border-color:var(--done)}
+
+  .rev{display:block;text-decoration:none;color:inherit;background:var(--raised);
+    border:1px solid var(--rule);border-radius:13px;padding:17px 19px;box-shadow:var(--shadow);
+    transition:border-color .12s ease,transform .12s ease}
+  .rev:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .rev:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .rev .top{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .rev .ttl{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:-.01em;
+    color:var(--ink);text-wrap:balance}
+  .rev .date{font-family:var(--sans);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;
+    white-space:nowrap;flex:none}
+  .rev .desc{font-size:14.5px;color:var(--ink);margin:8px 0 0;line-height:1.5;max-width:62ch}
+  .rev .foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:13px;
+    font-family:var(--sans);font-size:11.5px;color:var(--muted)}
+  .kind{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    padding:2px 8px;border-radius:99px}
+  .kind.plan{background:var(--accent-soft);color:var(--accent)}
+  .kind.change{background:var(--sunk);color:var(--muted)}
+  .open{margin-left:auto;font-weight:600;color:var(--accent)}
+
+  /* status */
+  .status{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:11px;
+    font-weight:700;padding:3px 9px;border-radius:99px}
+  .status.done{background:var(--done-soft);color:var(--done)}
+  .status.wip{background:var(--wip-soft);color:var(--wip)}
+  .steps{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--sans);font-size:11.5px;
+    color:var(--muted);margin-top:11px;padding-top:11px;border-top:1px solid var(--rule)}
+  .steps span{display:inline-flex;align-items:center;gap:5px}
+  .steps .ok{color:var(--done);font-weight:700}
+  .steps .no{color:var(--faint)}
+
+  .empty{font-family:var(--sans);font-size:14px;color:var(--muted);background:var(--raised);
+    border:1px dashed var(--rule);border-radius:13px;padding:22px;text-align:center;margin-top:20px}
+
+  .why{font-family:var(--sans);font-size:13px;color:var(--muted);line-height:1.6;
+    background:var(--raised);border:1px solid var(--rule);border-left:3px solid var(--accent);
+    border-radius:0 11px 11px 0;padding:14px 17px;margin-top:22px}
+  .why b{color:var(--ink)}
+  .foot-note{font-family:var(--sans);color:var(--faint);font-size:11.5px;text-align:center;margin-top:26px}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .btn,.context{display:none!important}
+    .rev,.mast,.why{box-shadow:none}
+  }
+</style>
+<div class="wrap">
+
+  <div class="mast">
+    <div class="row">
+      <div>
+        <p class="eyebrow crumbs">Direito de Mãe · WhatsApp rights helper</p>  <!-- wrap the project name in <a href="PROJECT_URL"> when the config has project_url -->
+        <h1>Reviews</h1>
+      </div>
+    </div>
+    <p class="lede">Every substantive change to the bot, the law corpus or the dossiê, with the reasoning the diff cannot show.</p>
+    <div class="count">
+      <span><b>2</b> reviews</span>
+      <span><b>2</b> completed</span>
+      <span>latest <b>06 Nov 2026</b></span>
+    </div>
+  </div>
+
+  <ol class="log">
+    <!-- REVIEW CARDS: newest first, insert below -->
+    <li class="is-done">
+    <a class="rev" href="https://claude.ai/artifact/WETAz9meLCujuUv9d4z9SJ" target="_blank" rel="noopener">
+      <div class="top"><span class="ttl">Every Mother, Every Article</span><span class="date">06 Nov 2026</span></div>
+      <p class="desc">laws.md was checked against the official Senado and Câmara texts, three errors fixed, and expanded from domestic workers to every working mother. A weekly job now flags any change to those laws.</p>
+      <div class="foot"><span class="kind change">Change</span><span>covers <code>b27c23a</code> · v1</span><span class="status done" style="margin-left:auto">✓ Completed</span></div>
+      <div class="steps"><span class="no">○ Comments addressed</span><span class="ok">✓ Merged 06 Nov 2026</span><span class="ok">✓ Submitted</span></div>
+    </a>
+  </li>
+  <li class="is-done">
+    <a class="rev" href="https://claude.ai/artifact/AkQ3RiKB9oi4jWbWc3ZLjF" target="_blank" rel="noopener">
+      <div class="top"><span class="ttl">The Dates She Can Plan Around</span><span class="date">06 Nov 2026</span></div>
+      <p class="desc">The bot now gives exact maternity-leave dates, computed in code like the job-protection date, and asks for the due date when it's missing. The dossiê shows her prints and photos.</p>
+      <div class="foot"><span class="kind change">Change</span><span>covers <code>da8b236</code> · v1</span><span class="status done" style="margin-left:auto">✓ Completed</span></div>
+      <div class="steps"><span class="no">○ Comments addressed</span><span class="ok">✓ Merged 06 Nov 2026</span><span class="ok">✓ Submitted</span></div>
+    </a>
+  </li>
+  </ol>
+
+  <div class="why">
+    <b>What a Review is.</b> Every substantive change goes through a PR loop — an owner agent
+    proposes, a co-worker agent reviews until it approves — and then gets a Review page: the
+    <em>why</em> the diff can't show, with a quiz and a micro world. Comment on it with the
+    artifact viewer's own commenting — Claude reads those threads directly. The
+    branch <b>merges only after</b> the human pass here: a clean pass, or the go-ahead once
+    comments are addressed. Merging is the sign-off, so a merged Review is <b>completed</b>.
+  </div>
+
+  <p class="foot-note">Direito de Mãe · reviews are the record of why each change was right</p>
+
+</div>
+
+
