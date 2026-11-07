@@ -92,3 +92,18 @@ def test_pdf_embeds_evidence_images(tmp_path: Path):
     without = dossie.build({**base, "entries": base["entries"][1:]}, tmp_path / "a.pdf").stat().st_size
     with_img = dossie.build(base, tmp_path / "b.pdf").stat().st_size
     assert with_img > without
+
+
+def test_leave_tag_alone_still_asks():
+    out = fill_date("Sua licença: [DATAS_LICENCA].", None)
+    assert ASK_DUE in out and "28 dias" in out and "[" not in out
+
+
+def test_pdf_skips_corrupt_image_and_wraps_rows(tmp_path: Path):
+    from PIL import Image
+    for n in range(4):
+        Image.new("RGB", (3000, 4000), "white").save(tmp_path / f"p{n}.jpg")
+    (tmp_path / "broken.jpg").write_bytes(b"not an image")
+    entries = [{"summary": str(n), "file": f"p{n}.jpg"} for n in range(4)] + [{"summary": "x", "file": "broken.jpg"}]
+    out = dossie.build({"profile": {}, "entries": entries}, tmp_path / "d.pdf")
+    assert out.stat().st_size < 2_000_000  # photos were downscaled

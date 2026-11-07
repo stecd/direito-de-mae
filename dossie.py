@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fpdf import FPDF
 from fpdf.fonts import FontFace
+from PIL import Image
 
 from brain import job_protection_end, leave_window
 
@@ -181,24 +182,33 @@ def build(user: dict, out: Path) -> Path:
                 r.cell(_t(e.get("article") or "-"))
     pdf.ln(6)
 
-    # Evidence thumbnails (images she sent, numbered like the timeline)
-    pics = [(i, out.parent / e["file"]) for i, e in enumerate(entries, 1)
-            if e.get("file") and Path(e["file"]).suffix.lower() in IMAGE_EXT
-            and (out.parent / e["file"]).exists()]
+    # Evidence thumbnails (images she sent, numbered like the timeline).
+    # Open and shrink every image first, so an unreadable file never leaves a gap
+    # or breaks the row layout, and phone photos don't bloat the PDF.
+    pics = []
+    for i, e in enumerate(entries, 1):
+        f = e.get("file")
+        if not f or Path(f).suffix.lower() not in IMAGE_EXT or not (out.parent / f).exists():
+            continue
+        try:
+            img = Image.open(out.parent / f)
+            img.load()
+            img = img.convert("RGB")
+            img.thumbnail((1200, 1200))
+            pics.append((i, img))
+        except Exception:
+            continue
     if pics:
         section("Prints e fotos enviados")
         tw, th, gap = (w - 2 * 6) / 3, 62, 6
-        for k, (i, path) in enumerate(pics):
+        for k, (i, img) in enumerate(pics):
             col = k % 3
             if col == 0:
                 if pdf.get_y() + th + 8 > pdf.h - 18:
                     pdf.add_page()
                 y0 = pdf.get_y()
             x = L + col * (tw + gap)
-            try:
-                pdf.image(str(path), x=x, y=y0, w=tw, h=th, keep_aspect_ratio=True)
-            except Exception:
-                continue
+            pdf.image(img, x=x, y=y0, w=tw, h=th, keep_aspect_ratio=True)
             pdf.set_xy(x, y0 + th + 1)
             pdf.set_font(F, "", 8)
             pdf.set_text_color(*GREY)
