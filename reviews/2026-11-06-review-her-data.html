@@ -1,0 +1,498 @@
+<title>Her Data, Her Choice</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column with a sticky tab bar; same tokens as the Reviews index */
+  :root{
+    --ground:#EDF0F3; --raised:#FFFFFF; --sunk:#E3E8ED;
+    --ink:#141B22; --muted:#5A6773; --faint:#8A96A2; --rule:#D5DCE3;
+    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --done:#0f7b6c; --done-soft:#dff0ec; --wip:#9a6a00; --wip-soft:#f8efd7;
+    --add:#e6f4ea; --addink:#1a6b34; --del:#fbe9eb; --delink:#9b2335;
+    --wa:#dcf8c6; --waink:#1b2a14;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06);
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --wa:#1f3a2a; --waink:#dff3e4; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+  :root[data-theme="dark"]{
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --wa:#1f3a2a; --waink:#dff3e4; --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.6;
+    padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ground)}
+  .wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  a{color:var(--accent)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--sunk);padding:1px 5px;border-radius:4px;word-break:break-word}
+  .mast{background:var(--raised);border:1px solid var(--rule);border-top:3px solid var(--ink);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .eyebrow a{color:inherit;text-decoration:none}.eyebrow a:hover{text-decoration:underline}
+  h1{font-size:30px;font-weight:600;margin:0;text-wrap:balance;line-height:1.2}
+  h2{font-size:21px;font-weight:600;margin:0 0 8px;text-wrap:balance}
+  h3{font-size:16px;margin:16px 0 6px;font-family:var(--sans)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-family:var(--sans);font-size:11.5px}
+  .chip{padding:3px 9px;border-radius:99px;font-weight:700;background:var(--sunk);color:var(--muted)}
+  .chip.wait{background:var(--wip-soft);color:var(--wip)} .chip.done{background:var(--done-soft);color:var(--done)}
+  .note{font-family:var(--sans);font-size:13px;color:var(--muted);margin:12px 0 0}
+  section{display:flex;flex-direction:column;gap:2px}
+  section p{margin:0 0 10px;max-width:66ch}
+  .tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;gap:4px;background:var(--ground);padding:6px 0;border-bottom:1px solid var(--rule);font-family:var(--sans)}
+  .tabs button{font:inherit;font-size:14px;font-weight:600;border:0;background:none;color:var(--muted);padding:8px 14px;border-radius:8px;cursor:pointer}
+  .tabs button[aria-selected="true"]{background:var(--raised);color:var(--ink);box-shadow:var(--shadow)}
+  .panel{display:flex;flex-direction:column;gap:26px}
+  .diff{border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:6px 0 12px;background:var(--raised)}
+  .diff .path{font-family:var(--mono);font-size:12px;padding:6px 10px;background:var(--sunk);color:var(--muted)}
+  .diff pre{margin:0;padding:8px 0;font-family:var(--mono);font-size:12.5px;line-height:1.5;overflow-x:auto;white-space:pre}
+  .diff pre span{display:block;padding:0 10px}
+  .a{background:var(--add);color:var(--addink)} .d{background:var(--del);color:var(--delink)}
+  .callout{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:15px;max-width:66ch}
+  .callout.warn{background:var(--wip-soft)}
+  ul.plain{margin:0 0 10px;padding-left:20px;max-width:66ch} ul.plain li{margin-bottom:6px}
+  .lbl{font-family:var(--sans);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--muted);margin-right:6px}
+  .lbl.blk{background:var(--del);color:var(--delink)}
+  .skip{font-family:var(--sans);font-size:13px}
+  /* Diagram family A: where her words live */
+  .where{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0 14px}
+  .where div{background:var(--raised);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-family:var(--sans);font-size:13px;min-width:0}
+  .where b{display:block;font-size:13.5px;margin-bottom:4px}
+  .where .was{color:var(--delink)} .where .now{color:var(--done)}
+  /* Diagram family B: the key ring */
+  .ring{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;margin:8px 0 14px}
+  .ring .k{background:var(--raised);border:1px solid var(--rule);border-radius:8px;padding:8px 10px}
+  .ring .k.gone{text-decoration:line-through;color:var(--delink);background:var(--del)}
+  .ring .arr{color:var(--faint)}
+  /* Diagram family C: onboarding steps */
+  .steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--sans);font-size:12.5px;margin:8px 0 14px}
+  .steps span{padding:6px 10px;border-radius:99px;background:var(--raised);border:1px solid var(--rule)}
+  .steps span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+  .steps i{color:var(--faint);font-style:normal}
+  .bubble{display:inline-block;background:var(--wa);color:var(--waink);border-radius:10px;padding:6px 10px;font-family:var(--sans);font-size:13px;max-width:100%}
+  /* Quiz */
+  .q{background:var(--raised);border:1px solid var(--rule);border-radius:12px;padding:16px 18px}
+  .q p.stem{font-weight:600;margin:0 0 10px}
+  .opts{display:grid;gap:8px}
+  .opts button{text-align:left;font-family:var(--sans);font-size:14px;line-height:1.4;padding:10px 12px;border-radius:9px;border:1px solid var(--rule);background:var(--ground);color:var(--ink);cursor:pointer}
+  .opts button:hover:not(:disabled){border-color:var(--accent)}
+  .opts button.right{background:var(--done-soft);border-color:var(--done)}
+  .opts button.wrong{background:var(--del);border-color:var(--delink)}
+  .opts button:disabled{cursor:default}
+  .explain{font-family:var(--sans);font-size:13.5px;margin-top:10px;color:var(--muted)}
+  .score{font-family:var(--sans);font-weight:700}
+  .key{display:none}
+  /* Micro world */
+  .world{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px}
+  @media (max-width:720px){.world{grid-template-columns:minmax(0,1fr)}}
+  .phone{background:var(--raised);border:1px solid var(--rule);border-radius:18px;display:flex;flex-direction:column;min-height:420px;overflow:hidden}
+  .phone .bar{font-family:var(--sans);font-size:12.5px;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--rule)}
+  .chat{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px;max-height:420px;font-family:var(--sans);font-size:13px}
+  .chat .m{max-width:85%;padding:6px 9px;border-radius:9px;white-space:pre-wrap}
+  .chat .me{align-self:flex-end;background:var(--wa);color:var(--waink)}
+  .chat .bot{align-self:flex-start;background:var(--sunk)}
+  .chat .voice{font-style:italic}
+  .compose{display:flex;flex-direction:column;gap:6px;padding:8px;border-top:1px solid var(--rule)}
+  .compose .row{display:flex;gap:6px}
+  .compose input[type=text]{flex:1;min-width:0;font:inherit;font-family:var(--sans);font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--ground);color:var(--ink)}
+  .btn{font-family:var(--sans);font-size:12.5px;font-weight:600;padding:7px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--ground);color:var(--ink);cursor:pointer}
+  .btn:hover{border-color:var(--accent)} .btn.pri{background:var(--accent);color:var(--raised);border-color:var(--accent)}
+  .btn.on{background:var(--done-soft);border-color:var(--done)} .btn.off{background:var(--del);border-color:var(--delink)}
+  .quick{display:flex;flex-wrap:wrap;gap:5px}
+  .quick button{font-family:var(--sans);font-size:11.5px;padding:4px 8px;border-radius:99px;border:1px solid var(--rule);background:var(--raised);color:var(--ink);cursor:pointer}
+  .glass{display:flex;flex-direction:column;gap:10px;min-width:0}
+  .pane{background:var(--raised);border:1px solid var(--rule);border-radius:12px;padding:10px 12px;min-width:0}
+  .pane h4{margin:0 0 6px;font-family:var(--sans);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .pane pre{margin:0;font-family:var(--mono);font-size:11.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;max-height:170px;overflow-y:auto}
+  .console pre{max-height:200px}
+  .controls{display:flex;flex-wrap:wrap;gap:6px}
+  .missions{list-style:none;padding:0;margin:0;font-family:var(--sans);font-size:13px;display:grid;gap:4px}
+  .missions li::before{content:"○ ";color:var(--faint)} .missions li.ok::before{content:"✓ ";color:var(--done)}
+  .missions li.ok{color:var(--muted)}
+  label.tog{font-family:var(--sans);font-size:12.5px;display:flex;gap:6px;align-items:center}
+  /* Tests */
+  .tsum{font-family:var(--sans);font-size:14px;margin:0 0 8px}.tsum.green b{color:var(--done)}.tsum.red b{color:var(--delink)}
+  h3.tfile{font-size:13.5px;margin:10px 0 4px}
+  details summary{font-family:var(--sans);font-size:13px;cursor:pointer;color:var(--accent)}
+  ul.tests{list-style:none;padding:0;margin:8px 0;font-size:13px;display:grid;gap:3px}
+  ul.tests li{display:flex;gap:8px;min-width:0}ul.tests .ok span{color:var(--done)}ul.tests .bad span{color:var(--delink)}
+  pre.cmd{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:8px 10px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+  .rev{font-family:var(--sans);font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:14px}
+  .fine{font-family:var(--sans);font-size:12.5px;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  @media print{.tabs,.compose,.controls,.glass,.phone{display:none!important}.panel[hidden]{display:flex!important}.key{display:block}.explain{display:none}.world-print{display:block!important}}
+  .world-print{display:none}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Direito de Mãe • <a href="https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr" target="_blank" rel="noopener">All Reviews</a></p>
+    <h1>Her Data, Her Choice</h1>
+    <div class="chips">
+      <span class="chip done" data-review-branch="review/her-data">✓ Reviewed · merged 06 Nov 2026</span>
+      <span class="chip">PR <a href="https://github.com/stecd/direito-de-mae/pull/3" target="_blank" rel="noopener">stecd/direito-de-mae#3</a></span>
+      <span class="chip">Change · Phase 2</span>
+    </div>
+    <p class="note">To comment, select any text and use the comment control in the artifact viewer.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="explanation" aria-selected="true">Explanation</button>
+    <button role="tab" data-tab="quiz" aria-selected="false">Quiz</button>
+    <button role="tab" data-tab="world" aria-selected="false">Micro World</button>
+  </nav>
+
+  <!-- ================= EXPLANATION ================= -->
+  <div class="panel" id="p-explanation" role="tabpanel">
+
+    <section>
+      <h2>What she gets now</h2>
+      <p>Before this change, the first thing a new mother saw was a consent footer stuck to the bottom of a legal answer. Now she gets a short interview before anything is stored or sent to an AI:</p>
+      <div class="steps"><span>1 · Hi, what this is, "Não sou advogada"</span><i>→</i><span class="on">2 · Escrita, áudio, ou os dois?</span><i>→</i><span>3 · Consent: SIM / NÃO</span><i>→</i><span>4 · Safety tip</span><i>→</i><span>5 · Her first message, answered</span></div>
+      <p>After that, everything she sends is encrypted on the server, links to her files stop working after 15 minutes, Twilio's copies are deleted, and she can ask for things in her own words. "Me manda tudo que eu te contei" gets her the resumo PDF without knowing the word RESUMO. Deleting always asks once more.</p>
+    </section>
+
+    <section>
+      <h2>Background</h2>
+      <p class="skip">New to this system? Read on. Already know the message flow? <a href="#why-now">Skip to the part that changed</a>.</p>
+      <p>A mother writes to a WhatsApp number. Twilio receives it and calls our server's <code>/whatsapp</code> webhook. The server answers Twilio at once (Twilio gives up after 15 seconds) and does the real work in the background. It downloads any photo or voice note, transcribes voice with ElevenLabs, asks Claude for an answer with the law cited, and sends the reply back through Twilio's API. Her history, entries and evidence files live in <code>data/</code>, one JSON file per user, named by an HMAC of her phone number so the number itself is never stored. A web chat at <code>/</code> runs the same handler without Twilio, which is how everything here was tested.</p>
+      <p id="why-now">Her words pass through six places. Phase 1 protected one of them, the filename. This is each place before and after:</p>
+      <div class="where">
+        <div><b>Her phone</b><span class="was">Was: chat visible to whoever holds it.</span><br><span class="now">Now: safety tip on disappearing messages and a neutral contact name.</span></div>
+        <div><b>Twilio</b><span class="was">Was: every message and photo kept indefinitely.</span><br><span class="now">Now: deleted about 2 minutes after delivery.</span></div>
+        <div><b>Server disk</b><span class="was">Was: plain JSON, plain photos.</span><br><span class="now">Now: encrypted per user; key shredded on APAGAR.</span></div>
+        <div><b>File links</b><span class="was">Was: <code>/media/&lt;uid&gt;/&lt;file&gt;</code> forever.</span><br><span class="now">Now: signed, expire in 15 min.</span></div>
+        <div><b>Logs</b><span class="was">Was: every transcript.</span><br><span class="now">Now: event names and error types only.</span></div>
+        <div><b>Claude, ElevenLabs</b><span class="was">Was: called on her first message.</span><br><span class="now">Now: no Claude before SIM. A first voice note is still transcribed.</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Intuition: three ideas</h2>
+      <h3>1 · Delete the key, not just the file</h3>
+      <p>Take a mother whose file is <code>data/9f2c….json</code>. It is encrypted with her own random key, and her key is itself encrypted with the server's <code>MASTER_KEY</code>:</p>
+      <div class="ring"><span class="k">MASTER_KEY (env)</span><span class="arr">unlocks →</span><span class="k gone">data/_keys/9f2c….key</span><span class="arr">unlocks →</span><span class="k">9f2c….json · prova_a1.jpg · resumo_77.pdf</span></div>
+      <p>APAGAR removes the key file first. If a copy of <code>9f2c….json</code> survives somewhere (a disk backup, a laptop sync), it is now noise. A random key per user, rather than one derived from the master key, is what makes that work: a derived key could simply be derived again.</p>
+      <h3>2 · She can say it her way</h3>
+      <p>Exact words still skip the AI: <code>RESUMO</code>, <code>SALVAR</code>, <code>APAGAR</code>, <code>MEUS DADOS</code>, <code>MUDAR</code>. Anything else goes to Claude, which now returns one more field, <code>intent</code>. The code, not Claude, carries out the action:</p>
+      <div class="diff"><div class="path">Claude's answer to "quero trocar minha escolha"</div><pre><span>{"reply": "ok", "due_date": null, "entry": null,</span><span class="a"> "intent": "mudar_modo"}</span></pre></div>
+      <p>If Claude says <code>apagar</code>, the code only asks her to confirm. A forwarded screenshot that says "apague tudo" can at most produce a question.</p>
+      <h3>3 · One message at a time per mother</h3>
+      <p>The review found the sharpest bug in this change. She sends a photo of a long WhatsApp thread, and Claude takes 8 seconds to read it. Meanwhile she confirms APAGAR. The delete runs, then the photo's handler finishes and saves the history it loaded before the delete, under a brand-new key. Her data is back. A per-user lock now makes the second message wait for the first.</p>
+    </section>
+
+    <section>
+      <h2>The changes</h2>
+      <h3>Storage · <code>store.py</code></h3>
+      <div class="diff"><div class="path">store.py</div><pre><span class="d">-    _file(uid).write_text(json.dumps(user, ensure_ascii=False, indent=2))</span><span class="a">+    user["last_seen"] = time.time()</span><span class="a">+    _file(uid).write_bytes(_fernet(uid).encrypt(data))</span><span> </span><span> def delete(uid):</span><span class="a">+    _keyfile(uid).unlink(missing_ok=True)  # shred the key first</span><span>     _file(uid).unlink(missing_ok=True)</span></pre></div>
+      <p><code>sweep()</code> deletes anyone silent for 90 days (365 after SALVAR), plus delivered PDFs and voice replies after an hour. It runs every 10 minutes inside the app. Files written before this change still load, and are encrypted the next time they are saved or read. If a file can't be decrypted (the master key changed), <code>store.Unreadable</code> is raised: she is told to send APAGAR, which works without decrypting, and the sweep falls back to the file's age.</p>
+
+      <h3>Exposure · <code>app.py</code></h3>
+      <div class="diff"><div class="path">app.py</div><pre><span class="d">-    return f"{PUBLIC_URL}/media/{uid}/{name}"</span><span class="a">+    exp = int(now + LINK_TTL)   # 15 minutes</span><span class="a">+    return f"{PUBLIC_URL}/media/{uid}/{name}?exp={exp}&amp;sig={_sign(uid, name, exp)}"</span><span> </span><span class="a">+    msg = twilio.messages.create(**kw)</span><span class="a">+    _queue_cleanup(msg.sid)     # deleted with its media ~2 min later</span><span> </span><span class="d">-    log.info("transcript: %s", heard)</span></pre></div>
+      <p>The signature covers user, file name and expiry, so a link can't be pointed at another file or stretched. Tracebacks in the log keep file, line and exception type, and drop the exception message, which can echo her words.</p>
+
+      <h3>Onboarding · <code>onboarding.py</code>, <code>app.py</code></h3>
+      <p>Step state lives in <code>profile.onboarding</code>: <code>mode</code> → <code>consent</code> → <code>done</code>, and <code>mode_change</code> after MUDAR. "1", "escrita", "áudio", "os dois" all work. A voice-note answer with no clear choice counts as audio. Words are matched whole, so "minha mulher" isn't read as "ler". NÃO at consent deletes everything, including her first message. Replies follow her choice:</p>
+      <ul class="plain"><li><b>escrita</b>: text only.</li><li><b>áudio</b>: voice note only (text too when a file is attached, or if the voice fails).</li><li><b>os dois</b>: both.</li></ul>
+
+      <h3>Commands · <code>app.py</code>, <code>brain.py</code></h3>
+      <p><span class="bubble">RESUMO</span> replaces DOSSIÊ in everything she sees ("dossiê" still works). New: <span class="bubble">SALVAR</span> keeps her data a year, <span class="bubble">MEUS DADOS</span> says what's stored and the deletion date, <span class="bubble">MUDAR</span> re-asks text or audio. APAGAR always asks once more. Only APAGAR or SIM within 10 minutes confirms, and a spoken "não quero apagar" never does.</p>
+
+      <h3>Voice · <code>app.py</code>, <code>public/voice/</code></h3>
+      <p>Voice replies are off unless <code>VOICE_REPLIES=1</code>, to save ElevenLabs credits until the demo. The 16 fixed messages are voiced once and kept in <code>public/voice/</code>, which is committed. Four came free from ElevenLabs history via <code>import_voice_cache.py</code>. Replies with anything personal are never cached.</p>
+
+      <h3>What did not change</h3>
+      <p>Law answers, date maths, the PDF's content and layout, the Twilio webhook contract, and the web chat apart from its link parsing. The phone number is still never stored, which is why the 7-day warning before auto-delete isn't built (see Limits).</p>
+    </section>
+
+    <section>
+      <h2>The review</h2>
+      <p>The co-worker was asked one thing above all: can her data survive APAGAR, or reach somewhere it shouldn't? It found four ways, all fixed, then approved in round 2.</p>
+      <ul class="plain">
+        <li><span class="lbl blk">blocking</span>A slow message could re-save her data after APAGAR (the race above). Fixed with a per-user lock. The test fails with the lock removed.</li>
+        <li><span class="lbl blk">blocking</span>With a delete pending, a voice note saying "não, não quero apagar não" contains APAGAR, and deleted everything. Now "apagar" must lead the sentence and nothing may negate it.</li>
+        <li><span class="lbl blk">blocking</span>Switching from the dev key to a real <code>MASTER_KEY</code> made every existing user crash on load, before APAGAR could run, and the sweep skipped them forever. Fixed with <code>store.Unreadable</code>.</li>
+        <li><span class="lbl blk">blocking</span>After MUDAR, every message was read as a mode choice, APAGAR included, and "ler" matched inside "mulher". Keywords and long messages now pass through, with whole-word matching.</li>
+        <li><span class="lbl">pushed back</span>Confirm SALVAR when it comes from Claude's <code>intent</code>? No: it's non-destructive, the reply says so, and APAGAR undoes it. The co-worker accepted.</li>
+        <li><span class="lbl">disclosed</span>A first-contact voice note reaches ElevenLabs before consent. That's needed to understand a spoken answer, and the PR now says so.</li>
+      </ul>
+      <p>Smaller fixes: the consent-refusal voice note no longer recreates her key, old plaintext photos are encrypted on first read, voice-reply files expire, the Twilio cleanup queue is locked and survives a crash, and idle locks are pruned.</p>
+    </section>
+
+    <section>
+      <h2>Limits</h2>
+      <ul class="plain">
+        <li><b>She gets no warning before auto-delete.</b> We don't store her number, so we can't write first. Fixing it means storing the number encrypted and a Meta-approved template.</li>
+        <li><b>Run one server process.</b> The per-user lock is in memory. Two uvicorn workers would bring the APAGAR race back. It's on the go-live checklist.</li>
+        <li><b>Without <code>MASTER_KEY</code>, the encryption is decorative.</b> The dev fallback key sits in <code>data/</code>, next to what it protects. Also on the checklist.</li>
+        <li><b>Twilio deletion is untested against Twilio.</b> Only a fake client exercised it. The WhatsApp checklist covers it.</li>
+        <li><b>The uvicorn access log shows signed links.</b> They expire in 15 minutes, but they name her user id.</li>
+        <li><b>Free-plan voice clips are public.</b> <code>public/voice/</code> carries ElevenLabs free-plan audio: fine for a non-commercial demo with attribution, to be regenerated on a paid plan before any commercial use.</li>
+      </ul>
+    </section>
+
+    <section id="tests">
+      <h2>Tests</h2>
+      <!-- GENERATED from pytest junit xml by make_tests.py; do not edit by hand -->
+<p class="tsum green"><b>56 of 56 passed</b> · 7.1s</p>
+<h3 class="tfile"><code>test_offline.py</code> · 20 of 20</h3>
+<details><summary>Phase 1 checks: dates, PDF, law watcher · 20 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_dates</code></li><li class="ok"><span>✓</span><code>test_fill_date</code></li><li class="ok"><span>✓</span><code>test_parse_bad_json_falls_back_to_text</code></li><li class="ok"><span>✓</span><code>test_command_normalization</code></li><li class="ok"><span>✓</span><code>test_pdf_with_tricky_characters</code></li><li class="ok"><span>✓</span><code>test_store_roundtrip_and_delete</code></li><li class="ok"><span>✓</span><code>test_sid_validation</code></li><li class="ok"><span>✓</span><code>test_spoken_resumo_matching</code></li><li class="ok"><span>✓</span><code>test_rate_limiter</code></li><li class="ok"><span>✓</span><code>test_leave_window_and_tags</code></li><li class="ok"><span>✓</span><code>test_missing_due_date_asks_once</code></li><li class="ok"><span>✓</span><code>test_pdf_embeds_evidence_images</code></li><li class="ok"><span>✓</span><code>test_leave_tag_alone_still_asks</code></li><li class="ok"><span>✓</span><code>test_pdf_skips_corrupt_image_and_wraps_rows</code></li><li class="ok"><span>✓</span><code>test_dossie_rights_follow_work_type</code></li><li class="ok"><span>✓</span><code>test_law_warning_only_when_unreviewed_change</code></li><li class="ok"><span>✓</span><code>test_check_laws_parses_index_and_articles</code></li><li class="ok"><span>✓</span><code>test_check_laws_detects_new_act_changed_and_missing_article</code></li><li class="ok"><span>✓</span><code>test_check_laws_dou_bad_markup_is_an_error_not_a_crash</code></li><li class="ok"><span>✓</span><code>test_check_laws_refuses_baseline_with_gaps</code></li></ul></details>
+<h3 class="tfile"><code>test_safety.py</code> · 36 of 36</h3>
+<details><summary>Storage · 4 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_store_files_are_encrypted_and_shredded</code></li><li class="ok"><span>✓</span><code>test_read_media_refuses_path_traversal</code></li><li class="ok"><span>✓</span><code>test_legacy_plaintext_file_still_loads_then_saves_encrypted</code></li><li class="ok"><span>✓</span><code>test_sweep_deletes_only_expired_users</code></li></ul></details>
+<details><summary>Links, Twilio, logs · 3 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_signed_media_links_expire_and_cant_be_forged</code></li><li class="ok"><span>✓</span><code>test_media_endpoint_rejects_unsigned_links</code></li><li class="ok"><span>✓</span><code>test_twilio_cleanup_deletes_after_delivery_and_retries</code></li></ul></details>
+<details><summary>Onboarding words · 3 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_parse_mode_from_her_own_words</code></li><li class="ok"><span>✓</span><code>test_yes_no</code></li><li class="ok"><span>✓</span><code>test_keywords_skip_ai</code></li></ul></details>
+<details><summary>The real handler · 12 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_onboarding_full_interview</code></li><li class="ok"><span>✓</span><code>test_onboarding_no_consent_keeps_nothing</code></li><li class="ok"><span>✓</span><code>test_apagar_needs_confirmation</code></li><li class="ok"><span>✓</span><code>test_apagar_confirmation_is_cancelled_by_another_message</code></li><li class="ok"><span>✓</span><code>test_delete_in_her_own_words_still_asks_first</code></li><li class="ok"><span>✓</span><code>test_change_mode_in_her_own_words</code></li><li class="ok"><span>✓</span><code>test_salvar_extends_retention_and_meus_dados_reports</code></li><li class="ok"><span>✓</span><code>test_resumo_pdf_is_encrypted_with_signed_link</code></li><li class="ok"><span>✓</span><code>test_reply_mode_is_honoured</code></li><li class="ok"><span>✓</span><code>test_logs_never_contain_message_text</code></li><li class="ok"><span>✓</span><code>test_voice_replies_off_by_default</code></li><li class="ok"><span>✓</span><code>test_fixed_messages_are_voiced_once_then_cached</code></li></ul></details>
+<details><summary>Review fixes · 14 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_slow_message_cannot_bring_data_back_after_apagar</code></li><li class="ok"><span>✓</span><code>test_spoken_negation_never_confirms_delete</code></li><li class="ok"><span>✓</span><code>test_spoken_negation_with_pending_delete_keeps_data</code></li><li class="ok"><span>✓</span><code>test_changed_master_key_still_lets_her_delete</code></li><li class="ok"><span>✓</span><code>test_sweep_deletes_unreadable_files_by_age</code></li><li class="ok"><span>✓</span><code>test_mode_change_does_not_trap_her</code></li><li class="ok"><span>✓</span><code>test_report_words_are_not_mode_choices</code></li><li class="ok"><span>✓</span><code>test_consent_refusal_leaves_no_key_or_folder</code></li><li class="ok"><span>✓</span><code>test_legacy_plaintext_media_still_reaches_the_resumo</code></li><li class="ok"><span>✓</span><code>test_legacy_media_with_unreadable_key_is_skipped_not_crashing</code></li><li class="ok"><span>✓</span><code>test_twilio_cleanup_survives_a_crash_mid_loop</code></li><li class="ok"><span>✓</span><code>test_idle_locks_are_pruned</code></li><li class="ok"><span>✓</span><code>test_legacy_user_without_last_seen_expires_by_file_age</code></li><li class="ok"><span>✓</span><code>test_tracebacks_in_logs_drop_the_exception_message</code></li></ul></details>
+      <pre class="cmd">.venv/bin/python -m pytest -q                      # both suites, no API keys needed
+DRY_RUN=1 .venv/bin/uvicorn app:app --port 8010    # web chat at http://127.0.0.1:8010, no Twilio messages</pre>
+      <p class="fine">Also run by hand in the web chat with real Claude: interview → law answer with 20/06/2027 → "quero trocar minha escolha" → "o que você tem guardado sobre mim?" → "me manda tudo que eu te contei" (signed link 200, unsigned 404) → "quero apagar tudo" → APAGAR. The server log held none of the message text.</p>
+    </section>
+  </div>
+
+  <!-- ================= QUIZ ================= -->
+  <div class="panel" id="p-quiz" role="tabpanel" hidden>
+    <p>Five questions on how the change behaves. Answers stay in this browser.</p>
+    <div id="quiz"></div>
+    <p class="score" id="score"></p>
+    <div class="key" id="answer-key"></div>
+  </div>
+
+  <!-- ================= MICRO WORLD ================= -->
+  <div class="panel" id="p-world" role="tabpanel" hidden>
+    <p>A micro-world is to a change what living in France is to learning French: a place where the ideas are the physics. Here you are the mother. The right side is glass: what the server stores, what Twilio still holds, what the log says, and every step in the system's own terms.</p>
+    <div class="world">
+      <div class="phone">
+        <div class="bar">Direito de Mãe · WhatsApp</div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="compose">
+          <div class="quick" id="quick"></div>
+          <div class="row"><input type="text" id="msg" placeholder="Mensagem" aria-label="Message"><button class="btn pri" id="send">Send</button></div>
+          <label class="tog"><input type="checkbox" id="asvoice"> send as a voice note</label>
+        </div>
+      </div>
+      <div class="glass">
+        <div class="pane"><h4>Missions</h4><ul class="missions" id="missions"></ul></div>
+        <div class="pane"><h4>World controls</h4><div class="controls">
+          <button class="btn" id="t3">+3 minutes</button>
+          <button class="btn" id="t100">+100 days of silence</button>
+          <button class="btn on" id="lock">Per-user lock: on</button>
+          <button class="btn" id="race">Send a slow photo, then APAGAR</button>
+          <button class="btn" id="backup">Restore last night's backup</button>
+          <button class="btn" id="rekey">Change MASTER_KEY</button>
+          <button class="btn" id="reset">Reset world</button>
+        </div></div>
+        <div class="pane"><h4>Server disk · data/</h4><pre id="disk"></pre></div>
+        <div class="pane"><h4>Twilio · stored messages</h4><pre id="twilio"></pre></div>
+        <div class="pane"><h4>server.log</h4><pre id="log"></pre></div>
+        <div class="pane console"><h4>Console</h4><pre id="console"></pre></div>
+      </div>
+    </div>
+    <p class="fine">Simplifications: intent detection here is a few regular expressions (production asks Claude), the "ciphertext" is random characters, time is a counter, and Claude's legal answers are canned. The rules are the real ones: the step order, the confirm window, what each command stores, key shredding, the lock, the sweep.</p>
+    <div class="world-print"><p>On paper: the micro world lets the reader play a mother through the interview, ask for her resumo in her own words, start and cancel a delete, turn off the per-user lock to see the APAGAR race restore her data, restore a backup after APAGAR and find it unreadable, and let 100 days pass to watch the sweep.</p></div>
+  </div>
+
+  <footer class="rev">
+    <b>Revisions</b><br>v1 (current): first publish, covers <code>a5bd719</code> after review round 2.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const SLUG = "her-data";
+  const store = {get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+  /* ---------- tabs (hash routed) ---------- */
+  const tabs = ["explanation","quiz","world"];
+  function show(t){ if(!tabs.includes(t)) t="explanation";
+    tabs.forEach(x=>{document.getElementById("p-"+x).hidden = x!==t;
+      document.querySelector(`[data-tab="${x}"]`).setAttribute("aria-selected", String(x===t));});
+    window.scrollTo(0,0); }
+  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>{ if(location.hash==="#"+b.dataset.tab) show(b.dataset.tab); else location.hash=b.dataset.tab; }));
+  window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
+  show(location.hash.slice(1));
+
+  /* ---------- quiz ---------- */
+  const Q = [
+    {s:"After APAGAR, an old backup copy of her JSON file turns up. Why can't anyone read it?",
+     o:["The sweep re-encrypts every backup it finds","Her user key file was deleted before her data","MASTER_KEY is replaced after every deletion","Her filename HMAC no longer matches her phone"],a:1,
+     e:"delete() unlinks data/_keys/<uid>.key first. The backup is still ciphertext under a key that no longer exists anywhere. MASTER_KEY is not rotated, and the filename was never what protected the content."},
+    {s:"A delete is pending. She sends a voice note: \"não, não quero apagar não\". What happens?",
+     o:["Deleted, because the transcript holds APAGAR","Deleted, once she answers SIM to a second ask","Kept, because voice notes can't confirm at all","Kept, because a negation never confirms"],a:3,
+     e:"says_apagar() needs 'apagar' to lead the sentence with no NAO anywhere. Before the review fix, the substring match deleted everything. Voice can confirm: 'apagar' or 'sim' said plainly works."},
+    {s:"Why does handle() take a lock per user?",
+     o:["A slow message can't re-save data after APAGAR","Twilio delivers her replies in the right order","Two mothers never end up sharing one key","The sweep can't remove a file mid-read"],a:0,
+     e:"Without it, a photo still inside the Claude call saves the history it loaded before the delete, under a fresh key. The lock makes APAGAR wait for that message instead. It is per process, hence 'run one worker'."},
+    {s:"Her very first message is a voice note. Before she says SIM, which third party receives anything?",
+     o:["None: every vendor waits for her consent","Claude, which reads the audio for an answer","ElevenLabs, which transcribes the audio","Twilio's log, which keeps the transcript"],a:2,
+     e:"The transcript is needed to understand a spoken answer to the mode question, so ElevenLabs sees it. Claude is not called until SIM. The PR discloses this; Twilio has the audio itself, as with any message."},
+    {s:"The operator ran on the dev key, then sets a real MASTER_KEY. What does an existing mother see?",
+     o:["Her history, re-encrypted under the new key","A request to send APAGAR, which still works","A fresh interview, as if she were brand new","\"Tive um problema\" on every single message"],a:1,
+     e:"Her key can't be unwrapped, so load raises store.Unreadable. The handler tells her to send APAGAR, and delete() needs no decryption. Before the fix she got 'Tive um problema' forever; the sweep now also deletes her by file age."}
+  ];
+  const qkey = q => SLUG+"::quiz::"+[...(q.s+q.o.join("|"))].reduce((h,c)=>(h*31+c.charCodeAt(0))|0,0);
+  const qz = document.getElementById("quiz");
+  function renderQuiz(){
+    qz.innerHTML=""; let answered=0, right=0;
+    Q.forEach((q,i)=>{
+      const d=document.createElement("div"); d.className="q";
+      d.innerHTML=`<p class="stem">${i+1}. ${q.s}</p><div class="opts"></div><p class="explain" hidden></p>`;
+      const opts=d.querySelector(".opts"), ex=d.querySelector(".explain");
+      const saved=store.get(qkey(q));
+      q.o.forEach((t,j)=>{const b=document.createElement("button"); b.textContent=t; b.id=`q${i}o${j}`;
+        b.addEventListener("click",()=>{store.set(qkey(q),j); renderQuiz();}); opts.appendChild(b);});
+      if(saved!==null && saved!==undefined){ answered++; if(saved===q.a) right++;
+        [...opts.children].forEach((b,j)=>{b.disabled=true; if(j===q.a) b.classList.add("right"); else if(j===saved) b.classList.add("wrong");});
+        ex.hidden=false; ex.textContent=(saved===q.a?"Right. ":"Not quite. ")+q.e; }
+      qz.appendChild(d);
+    });
+    document.getElementById("score").textContent = answered===Q.length ? `Score: ${right} of ${Q.length}.` : `${answered} of ${Q.length} answered.`;
+  }
+  renderQuiz();
+  document.getElementById("answer-key").innerHTML = "<h3>Answer key</h3><ol>"+Q.map(q=>`<li>${q.o[q.a]}. ${q.e}</li>`).join("")+"</ol>";
+
+  /* ---------- micro world ---------- */
+  const $=id=>document.getElementById(id);
+  const MISSIONS=[
+    ["interview","Finish the interview, answering the mode question with a voice note"],
+    ["ownwords","Get your resumo without typing RESUMO"],
+    ["cancel","Start a delete, then cancel it by saying something else"],
+    ["race","Turn the lock off and watch a deleted mother come back"],
+    ["backup","Delete for real, then try last night's backup"],
+    ["sweep","Let 100 days pass and watch the sweep"],
+  ];
+  let done = new Set(store.get(SLUG+"::missions")||[]);
+  function tick(m){ if(!done.has(m)){done.add(m); store.set(SLUG+"::missions",[...done]); say("console","✓ mission: "+MISSIONS.find(x=>x[0]===m)[1]);} renderMissions(); }
+  function renderMissions(){ $("missions").innerHTML = MISSIONS.map(([k,t])=>`<li class="${done.has(k)?"ok":""}">${t}</li>`).join(""); }
+
+  let W;
+  const rnd=n=>Array.from({length:n},()=>"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[Math.random()*64|0]).join("");
+  const blob=()=> "gAAAAA"+rnd(38)+"…";
+  function fresh(){ return {t:0, user:null, keyOk:true, master:"mk-"+rnd(6), lock:true, twilio:[], log:[], cons:[], backup:null, uid:"9f2c41e0"}; }
+  function say(where,line){ (where==="log"?W.log:W.cons).push(line); }
+  function clock(){ const m=W.t; const d=Math.floor(m/1440), h=Math.floor(m%1440/60), mm=m%60; return `d${d} ${String(h).padStart(2,"0")}:${String(mm).padStart(2,"0")}`; }
+
+  function chat(who,text,voice){ const c=$("chat"); const d=document.createElement("div"); d.className="m "+(who==="me"?"me":"bot")+(voice?" voice":""); d.textContent=(voice?"🎤 ":"")+text; c.appendChild(d); c.scrollTop=c.scrollHeight; }
+  function twIn(t){ const sid="SM"+rnd(6); W.twilio.push({sid,at:W.t,dir:"in",t}); return sid; }
+  function reply(text){ const mode=W.user&&W.user.mode; const voiceOnly = mode==="audio";
+    const sid="SM"+rnd(6); W.twilio.push({sid,at:W.t,dir:"out",t:voiceOnly?"[voice note]":text});
+    say("cons",`twilio.messages.create(to=…) → ${sid}; _queue_cleanup(${sid})`);
+    chat("bot", voiceOnly ? "(voice note) "+text : text, voiceOnly); }
+  const norm=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+  const cmdOf=s=>norm(s).toUpperCase().replace(/[^A-Z]/g,"");
+  const saysApagar=c=>c.length<40 && !c.includes("NAO") && /^(APAGAR|QUEROAPAGAR|PODEAPAGAR|SIMAPAGAR)/.test(c);
+  function keyword(c,spoken){ if(c==="APAGAR"||(spoken&&saysApagar(c))) return "apagar"; if(c==="SALVAR") return "salvar"; if(c==="MUDAR") return "mudar_modo";
+    if(c==="MEUSDADOS"||c==="DADOS") return "meus_dados"; if(c.length<60 && /RESUMO|DOSSI|RELATORIO/.test(c)) return "resumo"; return null; }
+  function parseMode(s,spoken){ const w=norm(s).replace(/mensage[mn]s? de (voz|audio)/,"audio").split(/[^a-z0-9]+/).filter(Boolean);
+    const tx=w.some(x=>["1","ler"].includes(x)||/^(escrit|texto|mensage|digit|letra)/.test(x));
+    const au=w.some(x=>["2","voz","ouvir","falar","escutar"].includes(x)||/^(audio|falad)/.test(x));
+    if(w.some(x=>["3","dois","duas","ambos","ambas"].includes(x))||(tx&&au)) return "both"; if(tx) return "text"; if(au||spoken) return "audio"; return null; }
+  function claudeIntent(s){ const n=norm(s); // toy stand-in for Claude's "intent" field
+    if(/apag/.test(n)) return "apagar"; if(/(trocar|mudar).*(escolha|audio|mensagem)|prefiro (audio|mensagem|texto)/.test(n)) return "mudar_modo";
+    if(/(manda|envia).*(tudo|que eu te contei)|resumo/.test(n)) return "resumo"; if(/guardad|meus dados/.test(n)) return "meus_dados";
+    if(/nao (apaga|apague)|guarda mais/.test(n)) return "salvar"; return null; }
+  function save(){ if(!W.user) return; W.user.last=W.t; W.user.cipher=blob(); W.keyFile=true; W.backup={cipher:W.user.cipher,uid:W.uid}; say("cons",`store.save(${W.uid}) → data/${W.uid}.json (Fernet, user key)`); }
+  function del(){ W.keyFile=false; W.keyOk=true; say("cons",`store.delete(${W.uid}): unlink data/_keys/${W.uid}.key FIRST, then .json and media/`); W.user=null; }
+
+  function runIntent(i){ const u=W.user;
+    if(i==="apagar"){ u.pendingDelete=W.t; save(); reply("Você quer mesmo apagar tudo? Mande APAGAR de novo para confirmar. Se quiser uma cópia antes, mande RESUMO."); }
+    else if(i==="salvar"){ u.keep=365; save(); reply("Combinado. Vou guardar seus registros por 1 ano depois da sua última mensagem."); }
+    else if(i==="mudar_modo"){ u.step="mode_change"; save(); reply("Como você quer que eu responda agora? 1 escrita, 2 áudio, 3 os dois."); }
+    else if(i==="meus_dados"){ save(); reply(`Tenho guardado: ${u.entries.length} registro(s). Se você não falar comigo em ${u.keep} dias, eu apago tudo.`); }
+    else if(i==="resumo"){ save(); const exp=W.t+15; say("cons",`dossie.build(read=store.read_media) → write_media(resumo_${rnd(4)}.pdf) encrypted; link ?exp=${exp}&sig=${rnd(8)}`); reply(`Aqui está seu resumo com ${u.entries.length} registro(s). O link vale por 15 minutos.`); return "resumo"; }
+  }
+
+  function handle(text,spoken){
+    W.t+=1; const sid=twIn(spoken?"[voice note]":text); say("log",`${clock()} INFO message received`);
+    if(spoken) say("cons",`voice.transcribe(audio) → "${text}"  (ElevenLabs)`);
+    const c=cmdOf(text);
+    if(!W.keyOk && W.user){ say("cons","store.load → Unreadable (MASTER_KEY changed)"); say("log",`${clock()} ERROR a user file could not be decrypted`);
+      if(keyword(c,spoken)==="apagar"){ del(); reply("Pronto. Seus dados foram apagados."); } else reply("Não consigo abrir o que você guardou antes. Mande APAGAR para apagar tudo e começar de novo.");
+      finish(sid); return; }
+    const isNew=!W.user;
+    if(isNew && c==="APAGAR"){ reply("Não tenho nada guardado seu."); finish(sid); return; }
+    if(isNew){ W.user={step:"mode",mode:null,entries:[],keep:90,pendingFirst:text}; save(); say("cons","onboarding: new user → step=mode; pending_first kept (encrypted)");
+      reply("Oi! Eu sou o Direito de Mãe. Não sou advogada.\n\nComo você prefere conversar comigo? 1 escrita, 2 áudio, 3 os dois."); finish(sid); return; }
+    const u=W.user;
+    const pend=u.pendingDelete; delete u.pendingDelete;
+    if(pend!=null && W.t-pend<10 && (["APAGAR","SIM"].includes(c)||saysApagar(c))){ del(); reply("Pronto. Seus dados foram apagados."); finish(sid); return; }
+    if(pend!=null){ say("cons","pending_delete dropped: this message was not a confirmation"); if(!done.has("cancel")) tick("cancel"); }
+    if((u.step==="mode"||u.step==="consent") && keyword(c,spoken)==="apagar"){ del(); reply("Pronto. Seus dados foram apagados."); finish(sid); return; }
+    if(u.step==="mode_change" && (keyword(c,spoken)||text.split(/\s+/).length>8)){ u.step="done"; say("cons","mode_change: she moved on → treat as a normal message"); }
+    if(u.step==="mode"||u.step==="mode_change"){ const m=text.split(/\s+/).length<=8?parseMode(text,spoken):null;
+      if(!m){ save(); reply("Não entendi. Responda 1 escrita, 2 áudio, ou 3 os dois."); finish(sid); return; }
+      u.mode=m; say("cons",`parse_mode → ${m}`);
+      if(u.step==="mode"){ u.step="consent"; save(); if(spoken) u.votedByVoice=true; reply("Combinado. Antes de começar: eu guardo o que você me mandar, protegido, e apago tudo depois de 90 dias sem conversa. Responda SIM para começar."); }
+      else { u.step="done"; save(); reply("Combinado, vou responder "+(m==="text"?"por mensagem escrita.":m==="audio"?"por áudio.":"com mensagem e áudio.")); }
+      finish(sid); return; }
+    if(u.step==="consent"){ const n=norm(text).trim();
+      if(/^(nao|n)\b/.test(n)){ del(); say("cons","consent refused → delete; reply voiced from _shared, so no key is recreated"); reply("Tudo bem. Não guardei nada."); finish(sid); return; }
+      if(/\b(sim|pode|ok|aceito|claro)\b/.test(n)){ u.step="done"; const f=u.pendingFirst; delete u.pendingFirst; save();
+        reply("Pronto! Dica: ative as mensagens temporárias nesta conversa e salve meu contato com outro nome.");
+        if(f){ say("cons","now answering her first message: brain.think(…)  ← first Claude call"); u.entries.push({s:f.slice(0,40)}); save(); reply("Anotei. Mesmo sem carteira você tem direitos. (resposta da IA, com artigo)"); }
+        if(u.votedByVoice) tick("interview"); finish(sid); return; }
+      save(); reply("Para eu poder guardar suas mensagens, responda SIM. Se não quiser, responda NÃO."); finish(sid); return; }
+    const kw=keyword(c,spoken);
+    if(kw){ say("cons",`keyword ${c} → ${kw} (no AI call)`); runIntent(kw); finish(sid); return; }
+    say("cons","brain.think(history, message) → JSON with intent field  (toy: regex)");
+    const it=claudeIntent(text);
+    if(it){ say("cons",`intent = "${it}" → code runs it`); const r=runIntent(it); if(r==="resumo") tick("ownwords"); finish(sid); return; }
+    u.entries.push({s:text.slice(0,40)}); save(); reply("Anotei: "+text.slice(0,60)+". Mande print ou áudio se tiver."); finish(sid);
+  }
+  function finish(sid){ say("cons",`_queue_cleanup(${sid})  (her message, deleted with its media in ~2 min)`); render(); }
+
+  function render(){
+    const disk=[];
+    if(W.user||W.keyFile){ disk.push(`_keys/${W.uid}.key   ${W.keyFile?"(wrapped by MASTER_KEY)":""}`); }
+    if(W.user){ disk.push(`${W.uid}.json  ${W.user.cipher}`); disk.push(`  step=${W.user.step} mode=${W.user.mode||"?"} entries=${W.user.entries.length} keep=${W.user.keep}d last=${clock()}`); if(W.user.pendingDelete!=null) disk.push("  pending_delete set (10 min)"); }
+    if(!disk.length) disk.push("(nothing stored for her)");
+    if(!W.keyOk) disk.push("MASTER_KEY changed: her key can't be unwrapped");
+    $("disk").textContent=disk.join("\n");
+    $("twilio").textContent = W.twilio.length ? W.twilio.map(m=>`${m.sid} ${m.dir.padEnd(3)} ${String(m.t).slice(0,46)}  (age ${W.t-m.at} min)`).join("\n") : "(empty: everything delivered and deleted)";
+    $("log").textContent = W.log.slice(-40).join("\n") || "(empty)";
+    $("console").textContent = W.cons.slice(-60).join("\n"); $("console").scrollTop=1e9;
+    $("lock").textContent="Per-user lock: "+(W.lock?"on":"off"); $("lock").className="btn "+(W.lock?"on":"off");
+    renderMissions(); renderQuick();
+  }
+  function renderQuick(){ const u=W.user; let q;
+    if(!u) q=["Sou babá, grávida, a patroa quer me mandar embora"]; else if(u.step==="mode"||u.step==="mode_change") q=["1","prefiro áudio","os dois"];
+    else if(u.step==="consent") q=["sim","não"]; else q=["me manda tudo que eu te contei","quero apagar tudo","APAGAR","SALVAR","quero trocar minha escolha","não, não quero apagar não"];
+    $("quick").innerHTML=""; q.forEach(t=>{const b=document.createElement("button"); b.textContent=t; b.addEventListener("click",()=>send(t)); $("quick").appendChild(b);}); }
+  function send(t){ t=(t??$("msg").value).trim(); if(!t) return; const v=$("asvoice").checked; chat("me",t,v); $("msg").value=""; handle(t,v); }
+
+  $("send").addEventListener("click",()=>send());
+  $("msg").addEventListener("keydown",e=>{if(e.key==="Enter") send();});
+  $("t3").addEventListener("click",()=>{ W.t+=3; const before=W.twilio.length; W.twilio=W.twilio.filter(m=>W.t-m.at<2);
+    say("cons",`janitor: twilio_cleanup() deleted ${before-W.twilio.length} message(s) and their media`); render(); });
+  $("t100").addEventListener("click",()=>{ W.t+=100*1440; say("cons","janitor: store.sweep()");
+    if(W.user && W.t-W.user.last > W.user.keep*1440){ del(); say("log",`${clock()} INFO retention: deleted 1 expired user(s)`); say("cons","sweep: silent past retention → deleted"); tick("sweep"); }
+    else if(W.user) say("cons",`sweep: kept (retention ${W.user.keep} days)`); else say("cons","sweep: nothing to delete");
+    W.twilio=[]; render(); });
+  $("lock").addEventListener("click",()=>{ W.lock=!W.lock; say("cons",`per-user lock ${W.lock?"ON":"OFF"}`); render(); });
+  $("race").addEventListener("click",()=>{
+    if(!W.user||W.user.step!=="done"){ say("cons","Finish the interview first: the race needs a mother with data."); render(); return; }
+    const snapshot=JSON.parse(JSON.stringify(W.user)); W.user.pendingDelete=W.t;
+    chat("me","[photo of a long WhatsApp thread]"); chat("me","APAGAR");
+    say("cons","A: photo arrives → store.load() → brain.think() … (8 s)");
+    if(!W.lock){ say("cons","B: APAGAR arrives while A is inside Claude: confirms the pending delete"); del(); chat("bot","Pronto. Seus dados foram apagados.");
+      say("cons","A: finishes → store.save(history loaded BEFORE the delete) → _fernet creates a NEW key");
+      W.user=snapshot; delete W.user.pendingDelete; W.user.entries.push({s:"print"}); save(); chat("bot","Anotei o print.");
+      say("cons","⚠ she was told her data was deleted, and it is all back"); tick("race"); }
+    else { say("cons","B: waits on user_lock until A finishes"); W.user.entries.push({s:"print"}); delete W.user.pendingDelete; save(); chat("bot","Anotei o print.");
+      say("cons","B: runs now; A's message already cancelled the pending delete → asks again"); W.user.pendingDelete=W.t; save(); chat("bot","Você quer mesmo apagar tudo? Mande APAGAR de novo para confirmar."); }
+    render(); });
+  $("backup").addEventListener("click",()=>{
+    if(W.user){ say("cons","Last night's backup holds her file as it is now. Delete her first (APAGAR, then APAGAR again), then restore it."); }
+    else if(W.backup){ say("cons",`restore data/${W.backup.uid}.json from backup`); say("cons",`_fernet(${W.backup.uid}) → no data/_keys/${W.backup.uid}.key → store.load → empty user`); say("cons","the backup is unreadable: the key it needs was shredded"); tick("backup"); }
+    else say("cons","No mother and no backup yet.");
+    render(); });
+  $("rekey").addEventListener("click",()=>{ W.master="mk-"+rnd(6); W.keyOk=false; say("cons",`MASTER_KEY changed → existing user keys can't be unwrapped. Send her a message, then APAGAR.`); render(); });
+  $("reset").addEventListener("click",()=>{ W=fresh(); $("chat").innerHTML=""; say("cons","world reset (missions kept)"); render(); });
+
+  W=fresh(); say("cons","Send a first message as the mother. Tick 'send as a voice note' to answer by voice."); render();
+})();
+</script>

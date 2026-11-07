@@ -57,12 +57,13 @@ def test_sid_validation():
     assert not valid_sid("short") and not valid_sid("../../etc/passwd!") and not valid_sid(None)
 
 
-def test_spoken_dossie_matching():
-    from app import wants_dossie
-    assert wants_dossie("QUEROMEUDOCE", spoken=True)
-    assert not wants_dossie("QUEROMEUDOCE", spoken=False)
-    assert not wants_dossie("GOSTODEDOCE", spoken=True)
-    assert wants_dossie("DOSSIE", spoken=False)
+def test_spoken_resumo_matching():
+    from app import wants_resumo
+    assert wants_resumo("QUEROMEUDOCE", spoken=True)
+    assert not wants_resumo("QUEROMEUDOCE", spoken=False)
+    assert not wants_resumo("GOSTODEDOCE", spoken=True)
+    assert wants_resumo("DOSSIE", spoken=False) and wants_resumo("RESUMO", spoken=False)
+    assert wants_resumo("MANDAMEURELATORIO", spoken=False)
 
 
 def test_rate_limiter():

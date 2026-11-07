@@ -82,9 +82,10 @@ async function send(body, file) {
     for (const m of messages) {
       if (m.text) bubble('bot', esc(m.text));
       if (m.media) {
-        if (/\.ogg$/.test(m.media)) { const mp3 = m.media.replace(/\.ogg$/, '.mp3'); const b = bubble('bot', `<audio controls><source src="${mp3}" type="audio/mpeg"><source src="${m.media}" type="audio/ogg; codecs=opus"></audio>`); b.querySelector('audio').play().catch(()=>{}); }
-        else if (/\.(mp3|webm|m4a|mp4)$/.test(m.media)) { const b = bubble('bot', `<audio controls src="${m.media}"></audio>`); b.querySelector('audio').play().catch(()=>{}); }
-        else if (/\.pdf$/.test(m.media)) bubble('bot', `📄 <a href="${m.media}" target="_blank">dossie.pdf</a>`);
+        const path = m.media.split('?')[0];
+        if (/\.ogg$/.test(path)) { const mp3 = m.media.replace(/\.ogg$/, '.mp3'); const b = bubble('bot', `<audio controls><source src="${mp3}" type="audio/mpeg"><source src="${m.media}" type="audio/ogg; codecs=opus"></audio>`); b.querySelector('audio').play().catch(()=>{}); }
+        else if (/\.(mp3|webm|m4a|mp4)$/.test(path)) { const b = bubble('bot', `<audio controls src="${m.media}"></audio>`); b.querySelector('audio').play().catch(()=>{}); }
+        else if (/\.pdf$/.test(path)) bubble('bot', `📄 <a href="${m.media}" target="_blank">resumo.pdf</a>`);
       }
     }
   } catch (e) { wait.remove(); bubble('bot', e.name === 'AbortError' ? 'Demorou demais para responder. Tente de novo em instantes.' : 'Erro de conexão. Tente de novo.'); }

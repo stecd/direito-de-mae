@@ -137,14 +137,14 @@ Problem (FAPESP Feb 2026: 8% of new mothers know all their rights, 54% had one b
 |---|---|
 | **Her phone (WhatsApp chat)** | We can't delete it for her, so we teach her: on first contact and on `SEGURANÇA`, explain how to turn on **disappearing messages (24h / 7 days)** for this chat and how to save the contact under a neutral name. Replies never repeat the patroa's name or quote the evidence back. |
 | **Twilio** | Twilio keeps message bodies and media by default. After each message is processed, call `messages(sid).delete()` and delete its media (inbound and outbound). Without this, `APAGAR` is a lie. |
-| **Our server** | Encrypt each user file and media at rest (Fernet, key = HKDF(master key, uid)). `APAGAR` deletes the files **and** the per-user key (crypto-shredding: even backups become unreadable). Master key only in env, never in the repo. Keep the HMAC'd phone as the filename. |
+| **Our server** | Encrypt each user file and media at rest (Fernet, a random key per user, stored wrapped by `MASTER_KEY`). `APAGAR` deletes the files **and** the per-user key (crypto-shredding: even backups become unreadable). Master key only in env, never in the repo. Keep the HMAC'd phone as the filename. |
 | **Logs** | Log event types, timings and errors only, never message text, transcripts or phone numbers. Scrub `server.log`. |
 | **AI vendors** | Send only what's needed (no phone, no name). Use Anthropic API (no training on API data by default) and ElevenLabs zero-retention mode where available; record each vendor's retention in the README. |
 | **Dossiê / media links** | Replace public `/media/<uid>/<file>` with signed URLs (HMAC token, expire after ~15 min). Delete the PDF from disk after it's delivered. |
 
 **Retention: auto-delete after X time.**
 - Default: delete everything **90 days after her last message** (covers pregnancy → licença; she can extend).
-- A daily sweep job deletes expired users. **7 days before**, send one message: "Seus dados serão apagados em 7 dias. Mande RESUMO para guardar uma cópia, ou SALVAR para manter." (Inside WhatsApp's 24h window only if she wrote recently; otherwise this needs an approved template — note for Meta API.)
+- A sweep job (every 10 min) deletes expired users. **Built:** the deletion date is told at consent and in MEUS DADOS. **Not built yet:** the warning 7 days before. We don't store her number, so we can't write to her first; it needs her number stored encrypted (shredded with her data) plus a Meta-approved template. Planned message: "Seus dados serão apagados em 7 dias. Mande RESUMO para guardar uma cópia, ou SALVAR para manter." (Inside WhatsApp's 24h window only if she wrote recently; otherwise this needs an approved template — note for Meta API.)
 - Commands: `APAGAR` (now, everything, with a confirm step: "Mande APAGAR de novo para confirmar"), `MEUS DADOS` (what we store + when it expires), `RESUMO` (her copy before deleting), `SALVAR` (resets the clock).
 
 **Retrieval:** she owns the export. `RESUMO` is the retrieval path; optionally send it to a trusted second number (sister, sindicato) so evidence survives if her phone is taken or wiped.
@@ -181,3 +181,20 @@ Implementation: `profile.onboarding_step` in the user JSON; `app.py` routes to `
 
 ## 4. Future: Meta WhatsApp Cloud API instead of Twilio
 Apply for the official Meta WhatsApp Business (Cloud) API: business verification + a dedicated number, usually a few days (can take longer). Why: no sandbox `join` code or 72h expiry, a real branded number, lower cost per conversation, direct media API, approved templates for the 7-day retention warning, one fewer vendor holding her messages. Keep `send()` / media download behind one small adapter so the switch is a single file.
+
+## Phase 2 — build status (2026-11-06)
+Built and tested on the web chat (`test_safety.py`, 21 tests; real Claude in the browser):
+- Encrypted store with per-user keys and crypto-shredding; old plaintext files still load and are re-saved encrypted.
+- Retention: 90 days after the last message, 1 year after SALVAR; sweep every 10 min; resumo PDFs removed after 1 hour.
+- Signed media links (15 min). Twilio messages and media queued for deletion 2 min after sending, retried up to 6 times.
+- Logs carry no message text or transcripts (the uvicorn access log does show the short-lived signed links).
+- Onboarding: mode question (text/audio/both, voice answer = audio), consent (SIM/NÃO), safety tip, then her first message is answered.
+- Commands by keyword or in her own words (Claude returns `intent`): RESUMO, SALVAR, APAGAR (always confirmed), MEUS DADOS, MUDAR.
+Still to do on WhatsApp only: the checklist in section 3. Set `MASTER_KEY` in `.env` before going live.
+
+## Go-live checklist (before the WhatsApp number goes public)
+- [ ] **`MASTER_KEY` set in the server's environment** (generate it with the command in `.env.example`). Keep a copy in a password manager, not in the repo or next to `data/`. Without it, the server falls back to a development key file inside `data/`, which sits right next to the data it protects.
+- [ ] `HASH_SALT` set to a long random value (not the default).
+- [ ] Run **one** uvicorn worker on one instance. The per-user lock is in memory; several workers would let a slow message re-save data after APAGAR. Scaling out needs a file or database lock first.
+- [ ] Voice replies: `VOICE_REPLIES=1` and ElevenLabs credits topped up (off by default; only for the demo for now).
+- [ ] WhatsApp-only checklist in section 3 passed.
