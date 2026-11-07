@@ -1,4 +1,5 @@
 """Builds the dossiê PDF from her entries."""
+import io
 from datetime import date
 from pathlib import Path
 
@@ -92,7 +93,12 @@ class _PDF(FPDF):
         self.cell(0, 6, _t(f"Dossiê - Direito de Mãe  |  página {self.page_no()}/{{nb}}"), align="C")
 
 
-def build(user: dict, out: Path) -> Path:
+def build(user: dict, out: Path, read=None) -> Path:
+    """read(name) -> bytes | None loads an evidence file (decrypted); default: from out's folder."""
+    if read is None:
+        def read(name):
+            p = out.parent / name
+            return p.read_bytes() if p.exists() else None
     pdf = _PDF()
     if UNICODE:
         for style, f in _TTF.items():
@@ -236,10 +242,13 @@ def build(user: dict, out: Path) -> Path:
     pics = []
     for i, e in enumerate(entries, 1):
         f = e.get("file")
-        if not f or Path(f).suffix.lower() not in IMAGE_EXT or not (out.parent / f).exists():
+        if not f or Path(f).suffix.lower() not in IMAGE_EXT:
             continue
         try:
-            img = Image.open(out.parent / f)
+            data = read(f)
+            if not data:
+                continue
+            img = Image.open(io.BytesIO(data))
             img.load()
             img = img.convert("RGB")
             img.thumbnail((1200, 1200))
