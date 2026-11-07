@@ -1,0 +1,84 @@
+[
+ {
+  "round": 1,
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {
+    "n": 1,
+    "label": "blocking",
+    "text": "forget only ran after speak succeeded; if ffmpeg or the download failed after ElevenLabs logged the text, it stayed in history.",
+    "response": "Fixed: forget in a finally; test with a crashing speak.",
+    "commit": "8d42b55"
+   },
+   {
+    "n": 2,
+    "label": "suggestion",
+    "text": "List + delete delay every voice reply.",
+    "response": "Fixed: background thread.",
+    "commit": "8d42b55"
+   },
+   {
+    "n": 3,
+    "label": "suggestion",
+    "text": "20-item window can miss under concurrency.",
+    "response": "Fixed: up to 3 pages of 20; test.",
+    "commit": "8d42b55"
+   },
+   {
+    "n": 4,
+    "label": "suggestion",
+    "text": "Tests didn't check the voice_id / sort filters.",
+    "response": "Fixed: fake records kwargs; asserted.",
+    "commit": "8d42b55"
+   },
+   {
+    "n": 5,
+    "label": "question",
+    "text": "Could SDK retries leave duplicates?",
+    "response": "Only failed requests are retried and they create no item; documented.",
+    "commit": null
+   }
+  ]
+ },
+ {
+  "round": 2,
+  "verdict": "APPROVE",
+  "findings": [
+   {
+    "n": 1,
+    "label": "suggestion",
+    "text": "A restart right after a reply kills the daemon thread before it deletes.",
+    "response": "Documented in Limits.",
+    "commit": null
+   },
+   {
+    "n": 2,
+    "label": "suggestion",
+    "text": "forget stops at the first page with a match; an older duplicate stays.",
+    "response": "Accepted: every reply calls forget for itself.",
+    "commit": null
+   }
+  ]
+ },
+ {
+  "round": 3,
+  "verdict": "APPROVE",
+  "note": "Owner's pass: delete by ElevenLabs history id instead of text.",
+  "findings": [
+   {
+    "n": 1,
+    "label": "suggestion",
+    "text": "If forget_id raises, the item stays (logged, no text fallback).",
+    "response": "Accepted: the error is visible.",
+    "commit": null
+   },
+   {
+    "n": 2,
+    "label": "suggestion",
+    "text": "A missing history-item-id header would silently fall back to text matching.",
+    "response": "Fixed: warning logged.",
+    "commit": "merge"
+   }
+  ]
+ }
+]

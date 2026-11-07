@@ -1,0 +1,141 @@
+<title>Forget the Voice</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column, same tokens as the Reviews index */
+  :root{
+    --ground:#EDF0F3; --raised:#FFFFFF; --sunk:#E3E8ED;
+    --ink:#141B22; --muted:#5A6773; --faint:#8A96A2; --rule:#D5DCE3;
+    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --done:#0f7b6c; --done-soft:#dff0ec; --wip:#9a6a00; --wip-soft:#f8efd7;
+    --add:#e6f4ea; --addink:#1a6b34; --del:#fbe9eb; --delink:#9b2335;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06);
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+  :root[data-theme="dark"]{
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.6;
+    padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  a{color:var(--accent)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--sunk);padding:1px 5px;border-radius:4px;word-break:break-word}
+  .mast{background:var(--raised);border:1px solid var(--rule);border-top:3px solid var(--ink);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .eyebrow a{color:inherit;text-decoration:none}.eyebrow a:hover{text-decoration:underline}
+  h1{font-size:30px;font-weight:600;margin:0;text-wrap:balance;line-height:1.2}
+  h2{font-size:21px;font-weight:600;margin:0 0 8px;text-wrap:balance}
+  h3.tfile{font-family:var(--sans);font-size:13.5px;margin:10px 0 4px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-family:var(--sans);font-size:11.5px}
+  .chip{padding:3px 9px;border-radius:99px;font-weight:700;background:var(--sunk);color:var(--muted)}
+  .chip.wait{background:var(--wip-soft);color:var(--wip)} .chip.done{background:var(--done-soft);color:var(--done)}
+  .note{font-family:var(--sans);font-size:13px;color:var(--muted);margin:12px 0 0}
+  section p{margin:0 0 10px;max-width:66ch}
+  .ba{display:grid;gap:10px}
+  .pair{background:var(--raised);border:1px solid var(--rule);border-radius:12px;padding:12px 14px}
+  .pair .q{font-family:var(--sans);font-size:13px;font-weight:700;margin:0 0 8px}
+  .pair .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  @media (max-width:600px){.pair .cols{grid-template-columns:minmax(0,1fr)}}
+  .pair .was,.pair .now{font-family:var(--sans);font-size:13px;border-radius:8px;padding:8px 10px;min-width:0}
+  .pair .was{background:var(--del);color:var(--delink)} .pair .now{background:var(--add);color:var(--addink)}
+  .pair .tag{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;opacity:.85}
+  .callout{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:15px;max-width:66ch}
+  ul.plain{margin:0 0 10px;padding-left:20px;max-width:66ch} ul.plain li{margin-bottom:6px}
+  .lbl{font-family:var(--sans);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--muted);margin-right:6px}
+  .lbl.blk{background:var(--del);color:var(--delink)}
+  .tsum{font-family:var(--sans);font-size:14px;margin:0 0 8px}.tsum.green b{color:var(--done)}.tsum.red b{color:var(--delink)}
+  details summary{font-family:var(--sans);font-size:13px;cursor:pointer;color:var(--accent)}
+  ul.tests{list-style:none;padding:0;margin:8px 0;font-size:13px;display:grid;gap:3px}
+  ul.tests li{display:flex;gap:8px;min-width:0}ul.tests .ok span{color:var(--done)}ul.tests .bad span{color:var(--delink)}
+  pre.cmd{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:8px 10px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+  .rev{font-family:var(--sans);font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Direito de Mãe • <a href="https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr" target="_blank" rel="noopener">All Reviews</a></p>
+    <h1>Forget the Voice</h1>
+    <div class="chips">
+      <span class="chip done" data-review-branch="review/forget-voice">✓ Reviewed · merged 06 Nov 2026</span>
+      <span class="chip">Short review</span>
+      <span class="chip">PR <a href="https://github.com/stecd/direito-de-mae/pull/5" target="_blank" rel="noopener">stecd/direito-de-mae#5</a></span>
+    </div>
+    <p class="note">Short review: one mechanism, so this page is one scroll. To comment, select any text and use the comment control in the artifact viewer.</p>
+  </header>
+
+  <section>
+    <h2>What changed</h2>
+    <p>ElevenLabs keeps the text of every voice it generates in our account's history. With voice replies on, a line like "Anotei: a patroa disse que vai te mandar embora" would sit there indefinitely, beyond the reach of our encryption and APAGAR. Now each personal reply is deleted from that history as soon as it has been generated.</p>
+    <div class="ba">
+      <div class="pair"><p class="q">Checked live against ElevenLabs</p><div class="cols">
+        <div class="was"><span class="tag">Before deletion</span>The 25-character test reply was in history: 1 item.</div>
+        <div class="now"><span class="tag">After</span><code>forget</code> deleted 1; history then held 0.</div></div></div>
+    </div>
+    <p>The welcome, consent and other fixed messages stay in the history. They hold nothing about her, they're already cached in <code>public/voice/</code>, and the free import script finds them there.</p>
+  </section>
+
+  <section id="by-id">
+    <h2>Delete by id <span class="chip" style="font-size:11px;vertical-align:middle">New in v2</span></h2>
+    <p>After your pass, deletion no longer matches text. ElevenLabs returns each reply's history id before the audio downloads, and the bot deletes exactly that item. Ten mothers getting word-for-word the same reply each delete their own item. There's no history search, so nothing can fall outside the window. Text matching is kept only as a fallback if the id is ever missing, and that case is logged as a warning.</p>
+    <div class="ba"><div class="pair"><p class="q">Checked live against ElevenLabs</p><div class="cols">
+      <div class="was"><span class="tag">Header id</span>Matched the single history item with that reply's text.</div>
+      <div class="now"><span class="tag">After forget_id</span>0 items left.</div></div></div></div>
+  </section>
+
+  <section>
+    <h2>The one decision worth reading</h2>
+    <div class="callout">The deletion sits in a <code>finally</code> and runs in the background. ElevenLabs records the text the moment it's requested, not when the audio comes back. So a reply must be deleted even if ffmpeg or the download fails afterwards, and the mother shouldn't wait for two extra API calls before hearing it.</div>
+  </section>
+
+  <section>
+    <h2>The review</h2>
+    <p>The co-worker was asked whether any personal reply could escape deletion. Round 1 requested changes. Round 2 approved.</p>
+    <ul class="plain">
+      <li><span class="lbl blk">blocking</span>Deletion ran only after a successful generation. If ffmpeg crashed, the text stayed in history with no error. It now runs in a <code>finally</code>, with a test that crashes the generation.</li>
+      <li><span class="lbl">fixed</span>Two extra API calls delayed every voice reply. Deletion now runs in the background.</li>
+      <li><span class="lbl">fixed</span>Only the newest 20 items were searched. It now searches up to 3 pages of 20.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Limits</h2>
+    <ul class="plain">
+      <li><b>If deletion fails</b> (permission revoked, ElevenLabs down), the text stays in their history. Only an error line in our log tells you.</li>
+      <li><b>A restart in the second after a reply</b> kills the background deletion, without an error.</li>
+      <li><b>Her own voice notes</b> go to ElevenLabs speech-to-text. Whether ElevenLabs keeps them isn't covered here. The bot's privacy facts already say the tech companies "podem guardar cópias por um tempo", and that stays true.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tests</h2>
+    <!-- GENERATED from pytest junit xml by make_tests.py; do not edit by hand -->
+<p class="tsum green"><b>77 of 77 passed</b> · 9.1s</p>
+<h3 class="tfile"><code>test_offline.py</code> · 20 of 20</h3>
+<details><summary>Phase 1 checks: dates, PDF, law watcher · 20 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_dates</code></li><li class="ok"><span>✓</span><code>test_fill_date</code></li><li class="ok"><span>✓</span><code>test_parse_bad_json_falls_back_to_text</code></li><li class="ok"><span>✓</span><code>test_command_normalization</code></li><li class="ok"><span>✓</span><code>test_pdf_with_tricky_characters</code></li><li class="ok"><span>✓</span><code>test_store_roundtrip_and_delete</code></li><li class="ok"><span>✓</span><code>test_sid_validation</code></li><li class="ok"><span>✓</span><code>test_spoken_resumo_matching</code></li><li class="ok"><span>✓</span><code>test_rate_limiter</code></li><li class="ok"><span>✓</span><code>test_leave_window_and_tags</code></li><li class="ok"><span>✓</span><code>test_missing_due_date_asks_once</code></li><li class="ok"><span>✓</span><code>test_pdf_embeds_evidence_images</code></li><li class="ok"><span>✓</span><code>test_leave_tag_alone_still_asks</code></li><li class="ok"><span>✓</span><code>test_pdf_skips_corrupt_image_and_wraps_rows</code></li><li class="ok"><span>✓</span><code>test_dossie_rights_follow_work_type</code></li><li class="ok"><span>✓</span><code>test_law_warning_only_when_unreviewed_change</code></li><li class="ok"><span>✓</span><code>test_check_laws_parses_index_and_articles</code></li><li class="ok"><span>✓</span><code>test_check_laws_detects_new_act_changed_and_missing_article</code></li><li class="ok"><span>✓</span><code>test_check_laws_dou_bad_markup_is_an_error_not_a_crash</code></li><li class="ok"><span>✓</span><code>test_check_laws_refuses_baseline_with_gaps</code></li></ul></details>
+<h3 class="tfile"><code>test_prompt.py</code> · 15 of 15</h3>
+<details><summary>What Claude is told, and the handler around it · 15 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_privacy_facts_match_the_code</code></li><li class="ok"><span>✓</span><code>test_privacy_questions_must_not_get_nao_sei</code></li><li class="ok"><span>✓</span><code>test_no_rule_says_she_must_type_an_exact_word</code></li><li class="ok"><span>✓</span><code>test_reply_length_limit_is_stated_with_the_real_number</code></li><li class="ok"><span>✓</span><code>test_rules_are_numbered_in_order</code></li><li class="ok"><span>✓</span><code>test_fired_while_pregnant_keeps_employee_rights</code></li><li class="ok"><span>✓</span><code>test_sem_carteira_and_diarista_classified_by_real_work</code></li><li class="ok"><span>✓</span><code>test_doubt_means_mention_not_silence</code></li><li class="ok"><span>✓</span><code>test_work_type_is_confirmed_and_correctable</code></li><li class="ok"><span>✓</span><code>test_violated_right_beats_the_length_cap</code></li><li class="ok"><span>✓</span><code>test_known_work_type_reaches_claude</code></li><li class="ok"><span>✓</span><code>test_handler_passes_the_stored_work_type</code></li><li class="ok"><span>✓</span><code>test_a_greeting_is_not_answered_twice</code></li><li class="ok"><span>✓</span><code>test_short_real_first_message_is_still_answered</code></li><li class="ok"><span>✓</span><code>test_greeting_list</code></li></ul></details>
+<h3 class="tfile"><code>test_safety.py</code> · 36 of 36</h3>
+<details><summary>Storage · 4 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_store_files_are_encrypted_and_shredded</code></li><li class="ok"><span>✓</span><code>test_read_media_refuses_path_traversal</code></li><li class="ok"><span>✓</span><code>test_legacy_plaintext_file_still_loads_then_saves_encrypted</code></li><li class="ok"><span>✓</span><code>test_sweep_deletes_only_expired_users</code></li></ul></details>
+<details><summary>Links, Twilio, logs · 3 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_signed_media_links_expire_and_cant_be_forged</code></li><li class="ok"><span>✓</span><code>test_media_endpoint_rejects_unsigned_links</code></li><li class="ok"><span>✓</span><code>test_twilio_cleanup_deletes_after_delivery_and_retries</code></li></ul></details>
+<details><summary>Onboarding words · 3 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_parse_mode_from_her_own_words</code></li><li class="ok"><span>✓</span><code>test_yes_no</code></li><li class="ok"><span>✓</span><code>test_keywords_skip_ai</code></li></ul></details>
+<details><summary>The real handler · 12 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_onboarding_full_interview</code></li><li class="ok"><span>✓</span><code>test_onboarding_no_consent_keeps_nothing</code></li><li class="ok"><span>✓</span><code>test_apagar_needs_confirmation</code></li><li class="ok"><span>✓</span><code>test_apagar_confirmation_is_cancelled_by_another_message</code></li><li class="ok"><span>✓</span><code>test_delete_in_her_own_words_still_asks_first</code></li><li class="ok"><span>✓</span><code>test_change_mode_in_her_own_words</code></li><li class="ok"><span>✓</span><code>test_salvar_extends_retention_and_meus_dados_reports</code></li><li class="ok"><span>✓</span><code>test_resumo_pdf_is_encrypted_with_signed_link</code></li><li class="ok"><span>✓</span><code>test_reply_mode_is_honoured</code></li><li class="ok"><span>✓</span><code>test_logs_never_contain_message_text</code></li><li class="ok"><span>✓</span><code>test_voice_replies_off_by_default</code></li><li class="ok"><span>✓</span><code>test_fixed_messages_are_voiced_once_then_cached</code></li></ul></details>
+<details><summary>Review fixes · 14 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_slow_message_cannot_bring_data_back_after_apagar</code></li><li class="ok"><span>✓</span><code>test_spoken_negation_never_confirms_delete</code></li><li class="ok"><span>✓</span><code>test_spoken_negation_with_pending_delete_keeps_data</code></li><li class="ok"><span>✓</span><code>test_changed_master_key_still_lets_her_delete</code></li><li class="ok"><span>✓</span><code>test_sweep_deletes_unreadable_files_by_age</code></li><li class="ok"><span>✓</span><code>test_mode_change_does_not_trap_her</code></li><li class="ok"><span>✓</span><code>test_report_words_are_not_mode_choices</code></li><li class="ok"><span>✓</span><code>test_consent_refusal_leaves_no_key_or_folder</code></li><li class="ok"><span>✓</span><code>test_legacy_plaintext_media_still_reaches_the_resumo</code></li><li class="ok"><span>✓</span><code>test_legacy_media_with_unreadable_key_is_skipped_not_crashing</code></li><li class="ok"><span>✓</span><code>test_twilio_cleanup_survives_a_crash_mid_loop</code></li><li class="ok"><span>✓</span><code>test_idle_locks_are_pruned</code></li><li class="ok"><span>✓</span><code>test_legacy_user_without_last_seen_expires_by_file_age</code></li><li class="ok"><span>✓</span><code>test_tracebacks_in_logs_drop_the_exception_message</code></li></ul></details>
+<h3 class="tfile"><code>test_voice_history.py</code> · 6 of 6</h3>
+<details><summary>ElevenLabs history deletion · 6 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_forget_deletes_only_that_text</code></li><li class="ok"><span>✓</span><code>test_forget_pages_back_when_the_reply_is_not_in_the_newest_20</code></li><li class="ok"><span>✓</span><code>test_reply_is_forgotten_even_when_speak_fails_after_elevenlabs_logged_it</code></li><li class="ok"><span>✓</span><code>test_personal_reply_is_forgotten_fixed_message_is_not</code></li><li class="ok"><span>✓</span><code>test_failed_deletion_is_logged_without_her_words_and_reply_still_sent</code></li><li class="ok"><span>✓</span><code>test_reply_missing_from_history_is_reported</code></li></ul></details>
+    <pre class="cmd">.venv/bin/python -m pytest -q        # all suites, no API keys needed</pre>
+  </section>
+
+  <footer class="rev">
+    <b>Revisions</b><br>v2 (current): delete by ElevenLabs history id instead of text, after your pass; one section added after "What changed" (<a href="#by-id">jump to it</a>). Nothing else moved. Reviewed in round 3.<br>v1: first publish, covers <code>8d42b55</code> after review round 2.
+  </footer>
+</div>
