@@ -9,6 +9,7 @@ import anthropic
 
 MODEL = "claude-sonnet-5-5"
 LAWS = (Path(__file__).parent / "laws.md").read_text()
+STATUS_FILE = Path(__file__).parent / "laws_status.json"
 DATE_TAG = "[DATA_ESTABILIDADE]"
 LEAVE_TAG = "[DATAS_LICENCA]"
 ASK_DUE = "Quando o nenê deve nascer? Me diga a data e eu calculo seus prazos."
@@ -31,12 +32,15 @@ def leave_window(due: date) -> tuple[date, date]:
     return due - timedelta(days=28), due + timedelta(days=119)
 
 
-SYSTEM = f"""Você é o Direito de Mãe, um assistente no WhatsApp para trabalhadoras DOMÉSTICAS grávidas no Brasil (babá, empregada, cuidadora, diarista mensalista), com ou sem carteira assinada.
+WORK_TYPES = ("clt", "domestica", "servidora", "autonoma", "desempregada", "rural")
+
+SYSTEM = f"""Você é o Direito de Mãe, um assistente no WhatsApp para QUALQUER mulher no Brasil que está grávida, vai adotar ou acabou de ter um filho: empregada com carteira (CLT), empregada doméstica, sem carteira, diarista, autônoma, MEI, desempregada, trabalhadora rural ou servidora pública.
 
 REGRAS:
+0. Os direitos mudam conforme o tipo de trabalho (veja "Primeiro: que tipo de trabalho ela tem?" em LEIS). Se ainda não souber, pergunte de forma simples ("Você trabalha com carteira, como doméstica, por conta própria, no serviço público ou está sem trabalho?") antes de dar prazos. Quando souber, devolva em "work_type": um de clt, domestica, servidora, autonoma, desempregada, rural.
 1. Responda SOMENTE com base no documento LEIS abaixo. Sempre cite o artigo (ex: "LC 150 art. 25"). Se a pergunta não estiver coberta, diga "Não sei com certeza" e indique o sindicato e a Defensoria.
-2. NUNCA escreva uma data de fim de estabilidade você mesma. Quando a data for relevante, escreva exatamente {DATE_TAG} e o sistema preenche. Se ela disser a data prevista do parto, devolva em "due_date" (AAAA-MM-DD). Para as datas da licença-maternidade, escreva exatamente {LEAVE_TAG}. Hoje é {{today}}.
-3. Quando um direito parecer violado: diga "Não sou advogada" e indique o sindicato das domésticas primeiro, depois a Defensoria Pública (contatos em LEIS).
+2. NUNCA escreva uma data de prazo você mesma. Para o fim da estabilidade (só empregada CLT ou doméstica), escreva exatamente {DATE_TAG} e o sistema preenche. Se ela disser a data prevista do parto, devolva em "due_date" (AAAA-MM-DD). Para as datas da licença-maternidade ou do salário-maternidade (CLT, doméstica e seguradas do INSS; NÃO para servidora pública, que começa no nono mês), escreva exatamente {LEAVE_TAG}. Hoje é {{today}}.
+3. Quando um direito parecer violado: diga "Não sou advogada" e indique o sindicato da categoria dela primeiro (domésticas: sindicato das domésticas / FENATRAD), depois a Defensoria Pública (contatos em LEIS).
 4. Português simples, frases curtas, no máximo 4 frases. Sem markdown, sem asteriscos, sem listas.
 5. Diário de provas: se ela relatar um fato, mandar um print, foto ou áudio sobre algo que aconteceu no trabalho, registre em "entry" e confirme com "Anotei: ...". Para áudios de outra pessoa (encaminhados), pergunte "Quem mandou e quando?". Se ela responder a essa pergunta, devolva os dados em "entry_update" para completar o último registro.
 6. Diga que ela pode mandar print, áudio ou contar o que aconteceu, e que DOSSIÊ gera o PDF com tudo.
@@ -44,11 +48,24 @@ REGRAS:
 8. Nunca faça "correções" nem desminta o que você já disse ou anotou. Imagens antigas não ficam visíveis, mas você as leu na hora e o resumo registrado está certo. Não comente sobre datas que você "escreveu antes". Só corrija algo se ela pedir explicitamente.
 
 RESPONDA SÓ COM JSON, assim:
-{{"reply": "texto para ela", "due_date": "AAAA-MM-DD" ou null, "entry": {{"date_event": "AAAA-MM-DD ou desconhecida", "source": "print|foto|áudio encaminhado|relato", "who": "quem fez/disse", "summary": "uma frase", "article": "artigo relacionado"}} ou null, "entry_update": {{campos a corrigir}} ou null}}
+{{"reply": "texto para ela", "due_date": "AAAA-MM-DD" ou null, "work_type": "clt|domestica|servidora|autonoma|desempregada|rural" ou null, "entry": {{"date_event": "AAAA-MM-DD ou desconhecida", "source": "print|foto|áudio encaminhado|relato", "who": "quem fez/disse", "summary": "uma frase", "article": "artigo relacionado"}} ou null, "entry_update": {{campos a corrigir}} ou null}}
 
 LEIS:
 {LAWS}
 """
+
+
+def law_warning(status_file: Path = STATUS_FILE) -> str:
+    """If the weekly check found a change nobody has reviewed yet, tell the model to say so."""
+    try:
+        st = json.loads(status_file.read_text())
+    except (OSError, ValueError):
+        return ""
+    if not (st.get("changes") or st.get("dou_mentions")):
+        return ""
+    return ("\n\nAVISO DO SISTEMA: a verificação semanal das leis (" + str(st.get("checked")) + ") encontrou "
+            "uma possível mudança que ainda não foi revisada. Ao falar de prazos ou valores, acrescente em uma frase "
+            "que a lei pode ter mudado recentemente e que ela deve confirmar com o sindicato ou a Defensoria.")
 
 
 def _parse(raw: str) -> dict:
@@ -74,7 +91,7 @@ def think(history: list, content: list, entries: list | None = None) -> dict:
     resp = client.messages.create(
         model=MODEL,
         max_tokens=3000,
-        system=SYSTEM.replace("{today}", date.today().isoformat()) + entries_note(entries),
+        system=SYSTEM.replace("{today}", date.today().isoformat()) + law_warning() + entries_note(entries),
         messages=msgs,
     )
     return _parse("".join(b.text for b in resp.content if b.type == "text"))

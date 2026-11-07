@@ -107,3 +107,67 @@ def test_pdf_skips_corrupt_image_and_wraps_rows(tmp_path: Path):
     entries = [{"summary": str(n), "file": f"p{n}.jpg"} for n in range(4)] + [{"summary": "x", "file": "broken.jpg"}]
     out = dossie.build({"profile": {}, "entries": entries}, tmp_path / "d.pdf")
     assert out.stat().st_size < 2_000_000  # photos were downscaled
+
+
+def test_dossie_rights_follow_work_type(tmp_path: Path):
+    for wt in ("clt", "domestica", "servidora", "autonoma", "desempregada", "rural", None, "bogus"):
+        user = {"profile": {"due_date": "2027-01-20", "work_type": wt}, "entries": []}
+        assert dossie.build(user, tmp_path / f"{wt}.pdf").stat().st_size > 1000
+    assert all(lead != "Estabilidade da gestante:" for lead, _ in dossie.RIGHTS["servidora"])
+    assert any(lead == "Estabilidade da gestante:" for lead, _ in dossie.RIGHTS["domestica"])
+
+
+def test_law_warning_only_when_unreviewed_change(tmp_path: Path):
+    from brain import law_warning
+    f = tmp_path / "s.json"
+    assert law_warning(f) == ""  # missing file
+    f.write_text("not json")
+    assert law_warning(f) == ""
+    f.write_text('{"checked": "2026-11-09", "changes": [], "dou_mentions": []}')
+    assert law_warning(f) == ""
+    f.write_text('{"checked": "2026-11-09", "changes": ["CLT: art. 392 text changed"]}')
+    assert "pode ter mudado" in law_warning(f)
+
+
+SENADO_INDEX = """<html><body><h1>Lei nº 11.770</h1><table>
+<tr><td>Lei nº 13.257 de 08/03/2016</td><td>Alteração</td></tr>
+<tr><td>Medida Provisória nº 1.116 de 04/05/2022</td></tr>
+<tr><td>Acórdão da ADI nº 7.495 de 23/09/2026</td></tr></table></body></html>"""
+
+COMPILED = ("<p>Art. 1º É instituído o Programa.</p><p>I - por 60 dias</p>"
+            "<p>Art. 1º-A. Fica a empresa autorizada.</p><p>Art. 2º É a administração.</p>"
+            "<p>Art. 10. Dez.</p>")
+
+
+def test_check_laws_parses_index_and_articles():
+    import check_laws as cl
+    a = cl.acts(cl.text_of(SENADO_INDEX))
+    assert "Lei 13257 de 08/03/2016" in a and "Medida Provisoria 1116 de 04/05/2022" in a
+    assert any(x.startswith("Acordao Da Adi 7495") for x in a)
+    t = cl.text_of(COMPILED)
+    assert cl.article(t, "1").startswith("Art. 1º É instituído") and "1º-A" not in cl.article(t, "1")
+    assert cl.article(t, "1-A").startswith("Art. 1º-A")
+    assert cl.article(t, "10").startswith("Art. 10.") and cl.article(t, "11") is None
+
+
+def test_check_laws_detects_new_act_changed_and_missing_article(monkeypatch):
+    import check_laws as cl
+    pages = {}
+    for law in cl.SOURCES["laws"]:
+        pages[law["index_url"]] = SENADO_INDEX
+        pages[law["text_url"]] = COMPILED
+    base = cl.snapshot(get=pages.__getitem__)
+    assert not [c for c in cl.compare(base, base) if "changed" in c or "NEW" in c]
+    changed = dict(pages)
+    law = cl.SOURCES["laws"][5]  # Lei 11.770
+    changed[law["index_url"]] = SENADO_INDEX.replace("</table>", "<tr><td>Lei nº 15.999 de 01/02/2027</td></tr></table>")
+    changed[law["text_url"]] = COMPILED.replace("por 60 dias", "por 90 dias")
+    out = cl.compare(base, cl.snapshot(get=changed.__getitem__))
+    assert any("NEW amending act" in c and "15999" in c for c in out)
+    assert any("art. 1 text changed" in c for c in out)
+
+    def down(url):
+        raise RuntimeError("socket hang up")
+    snap = cl.snapshot(get=down)
+    assert len(snap["errors"]) == 2 * len(cl.SOURCES["laws"])
+    assert not [c for c in cl.compare(base, snap) if "changed" in c or "NEW" in c]  # outage is not a law change
