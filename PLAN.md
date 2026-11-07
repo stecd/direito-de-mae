@@ -125,3 +125,59 @@ Problem (FAPESP Feb 2026: 8% of new mothers know all their rights, 54% had one b
 - [ ] `brew install ngrok ffmpeg` + authtoken; `pip install fastapi uvicorn python-multipart twilio anthropic elevenlabs fpdf2 python-dotenv httpx`
 - [ ] `laws.md` written; sindicato + Defensoria contacts for the demo city
 - [ ] Demo assets ready on the phone: the screenshot of the patroa's message, an áudio to forward
+
+---
+
+# Phase 2 — Safety, onboarding, WhatsApp rollout
+
+## 1. Security & safety (top of mind, not a feature)
+**Threats, in order of likelihood:** (a) the patroa or a partner picks up her phone and reads the chat; (b) our server or a log leaks; (c) a third party (Twilio, Anthropic, ElevenLabs) keeps copies we forgot about; (d) the dossiê link is guessed or forwarded.
+
+| Where data lives | What we do |
+|---|---|
+| **Her phone (WhatsApp chat)** | We can't delete it for her, so we teach her: on first contact and on `SEGURANÇA`, explain how to turn on **disappearing messages (24h / 7 days)** for this chat and how to save the contact under a neutral name. Replies never repeat the patroa's name or quote the evidence back. |
+| **Twilio** | Twilio keeps message bodies and media by default. After each message is processed, call `messages(sid).delete()` and delete its media (inbound and outbound). Without this, `APAGAR` is a lie. |
+| **Our server** | Encrypt each user file and media at rest (Fernet, key = HKDF(master key, uid)). `APAGAR` deletes the files **and** the per-user key (crypto-shredding: even backups become unreadable). Master key only in env, never in the repo. Keep the HMAC'd phone as the filename. |
+| **Logs** | Log event types, timings and errors only, never message text, transcripts or phone numbers. Scrub `server.log`. |
+| **AI vendors** | Send only what's needed (no phone, no name). Use Anthropic API (no training on API data by default) and ElevenLabs zero-retention mode where available; record each vendor's retention in the README. |
+| **Dossiê / media links** | Replace public `/media/<uid>/<file>` with signed URLs (HMAC token, expire after ~15 min). Delete the PDF from disk after it's delivered. |
+
+**Retention: auto-delete after X time.**
+- Default: delete everything **90 days after her last message** (covers pregnancy → licença; she can extend).
+- A daily sweep job deletes expired users. **7 days before**, send one message: "Seus dados serão apagados em 7 dias. Mande RESUMO para guardar uma cópia, ou SALVAR para manter." (Inside WhatsApp's 24h window only if she wrote recently; otherwise this needs an approved template — note for Meta API.)
+- Commands: `APAGAR` (now, everything, with a confirm step: "Mande APAGAR de novo para confirmar"), `MEUS DADOS` (what we store + when it expires), `RESUMO` (her copy before deleting), `SALVAR` (resets the clock).
+
+**Retrieval:** she owns the export. `RESUMO` is the retrieval path; optionally send it to a trusted second number (sister, sindicato) so evidence survives if her phone is taken or wiped.
+
+**Legal (LGPD):** pregnancy is *dado sensível* (health). Needs explicit, specific consent, purpose limitation (only to build her dossiê), and a named controller. Consent is a clear yes in onboarding, not a footer line.
+
+## Words she uses, not commands
+- **"Dossiê" → "RESUMO"** in everything she sees ("seu resumo com tudo que aconteceu"). Still accept "dossiê", "relatório", "minhas provas" as synonyms. The PDF title can stay "Dossiê" since the sindicato/Defensoria read it.
+- **Keywords are shortcuts, not the only way.** Each reply is classified by intent first: "quero trocar minha escolha", "prefiro áudio agora" → change mode; "me manda tudo que eu te contei" → resumo; "não apaga não" → salvar. Exact words (APAGAR, SALVAR, RESUMO, MUDAR) skip the AI call. Claude's JSON gets an `intent` field.
+- **Deleting is the exception:** a natural-language delete request ("quero apagar tudo") always gets a confirm step, so a misread never wipes her evidence.
+
+## 2. Onboarding interview
+Replaces the one-line consent footer. Short, one question per message, works by text **or** voice (first message goes as both, since we don't know yet).
+
+1. Hi + what this is (1 sentence) + "Não sou advogada."
+2. **"Como prefere conversar? 1 Mensagem escrita · 2 Áudio · 3 Os dois"** — accept the number, the word, or infer from a voice-note reply. Never ask about literacy.
+3. Consent: what we keep, why, for how long (90 days), how to delete. "Responda SIM para começar."
+4. Safety tip: disappearing messages + neutral contact name.
+5. Then the normal flow, honoring `profile.mode` (`text` → text only, `audio` → voice note + very short text, `both` → both). `MUDAR` re-asks anytime.
+
+Implementation: `profile.onboarding_step` in the user JSON; `app.py` routes to `onboard()` until step == done. Nothing is stored except the mode until she says SIM.
+
+## 3. Test plan — web first, WhatsApp only for WhatsApp things
+**Everything in the web chat (`web.html`, `DRY_RUN=1`), zero Twilio messages:** onboarding (all 3 modes + voice reply + MUDAR), consent refusal, law answers + citations, dates, images, audio in/out, entries, RESUMO, APAGAR + confirm, MEUS DADOS, retention sweep (fake clock), encryption round-trip, signed-URL expiry, log scrubbing. Add these to `test_offline.py`.
+
+**Then WhatsApp, only what the web can't prove** (budget ≈ 15–20 messages):
+- [ ] Twilio signature validation on the real webhook
+- [ ] Inbound voice note download (auth + redirect) → transcript
+- [ ] Outbound OGG shows as a voice-note bubble
+- [ ] Image download from Twilio
+- [ ] RESUMO PDF arrives via signed URL and opens on the phone
+- [ ] Twilio message + media deletion actually removes them (check console)
+- [ ] Disappearing-messages instructions match the current WhatsApp UI
+
+## 4. Future: Meta WhatsApp Cloud API instead of Twilio
+Apply for the official Meta WhatsApp Business (Cloud) API: business verification + a dedicated number, usually a few days (can take longer). Why: no sandbox `join` code or 72h expiry, a real branded number, lower cost per conversation, direct media API, approved templates for the 7-day retention warning, one fewer vendor holding her messages. Keep `send()` / media download behind one small adapter so the switch is a single file.
