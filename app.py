@@ -145,6 +145,10 @@ class RateLimiter:
 
 LIMITER = RateLimiter(limit=80, window=600)  # shared demo Wi-Fi: ~80 msgs per 10 min per IP
 OUTBOX: contextvars.ContextVar = contextvars.ContextVar("outbox", default=None)
+# True while answering Twilio inside its own webhook request (TWILIO_REPLY_MODE=twiml).
+TWIML: contextvars.ContextVar = contextvars.ContextVar("twiml", default=False)
+TWIML_MODE = os.environ.get("TWILIO_REPLY_MODE", "api") == "twiml"
+TWIML_BUDGET = 12.0  # seconds; Twilio gives up on the webhook at 15
 
 
 # ---------- Twilio cleanup: Twilio keeps every message and its media unless we delete them ----------
@@ -201,6 +205,26 @@ def twilio_cleanup(now: float | None = None, client=None) -> int:
     return done
 
 
+def sweep_replies(now: float | None = None, client=None) -> int:
+    """Replies sent as TwiML never pass through send(), so their SIDs aren't queued.
+    Delete every stored reply older than 2 minutes (this account only runs this bot)."""
+    from datetime import datetime, timezone
+    now = time.time() if now is None else now
+    client = client or twilio
+    gone = 0
+    for m in client.messages.list(limit=100):
+        if not str(m.direction).startswith("outbound") or not m.date_sent:
+            continue
+        if now - m.date_sent.replace(tzinfo=m.date_sent.tzinfo or timezone.utc).timestamp() < 120:
+            continue
+        try:
+            client.messages(m.sid).delete()
+            gone += 1
+        except Exception:
+            pass  # still delivering; next run
+    return gone
+
+
 async def _janitor():
     while True:
         try:
@@ -209,6 +233,8 @@ async def _janitor():
                 log.info("retention: deleted %d expired user(s)", len(gone))
             if SID != "none" and os.environ.get("DRY_RUN") != "1":
                 twilio_cleanup()
+                if TWIML_MODE:
+                    sweep_replies()
             prune_locks()
         except Exception:
             log.error("janitor failed:\n%s", scrubbed_tb())
@@ -270,9 +296,51 @@ async def whatsapp(request: Request, tasks: BackgroundTasks):
         sig = request.headers.get("X-Twilio-Signature", "")
         if not validator.validate(f"{PUBLIC_URL}/whatsapp", form, sig):
             raise HTTPException(403, "bad signature")
+    if TWIML_MODE:
+        return Response(await answer_in_time(form), media_type="text/xml")
     tasks.add_task(handle, form)
     # Answer Twilio immediately (it stops waiting after 15s); the real reply goes out later.
-    return Response(EMPTY_TWIML, media_type="application/xml")
+    return Response(EMPTY_TWIML, media_type="text/xml")
+
+
+def render_twiml(items: list) -> str:
+    """Twilio reply with one <Message> per item. A parked fallback text is used only if its
+    voice note didn't arrive in time."""
+    from twilio.twiml.messaging_response import MessagingResponse
+    resp = MessagingResponse()
+    for i, it in enumerate(items):
+        if it.get("fallback"):
+            nxt = items[i + 1] if i + 1 < len(items) else None
+            if nxt and nxt.get("media") and not nxt.get("text"):
+                continue  # the voice note made it: send that, not the text
+        msg = resp.message(it.get("text") or "")
+        if it.get("media"):
+            msg.media(it["media"])
+    return str(resp)
+
+
+async def answer_in_time(form: dict) -> str:
+    """Trial 'Try out WhatsApp' numbers only accept free text as the direct answer to her message.
+    Run the handler, collect what it says, and answer within TWIML_BUDGET seconds."""
+    box: list = []
+    done = threading.Event()
+
+    def run():
+        OUTBOX.set(box)
+        TWIML.set(True)
+        try:
+            handle(form)
+        finally:
+            done.set()
+    ctx = contextvars.copy_context()
+    threading.Thread(target=ctx.run, args=(run,), daemon=True).start()
+    await asyncio.to_thread(done.wait, TWIML_BUDGET)
+    items = list(box)
+    if not done.is_set():
+        log.error("reply not finished within %.0f s; sending what was ready (%d item(s))", TWIML_BUDGET, len(items))
+        if not items:
+            items = [{"text": "Recebi. Estou pensando, pode me mandar a mesma mensagem de novo daqui a pouco?", "media": None}]
+    return render_twiml(items)
 
 
 @app.get("/media/{uid}/{name}")
@@ -421,19 +489,23 @@ def say(phone: str, uid: str, text: str, media: str | None = None, mode: str | N
         sent_text = True
     else:
         sent_text = False
+        box = OUTBOX.get()
+        if TWIML.get() and box is not None:
+            # Inside Twilio's 15 s: keep the text ready in case the voice note isn't done in time.
+            box.append({"text": text, "media": None, "fallback": True})
     if not tts:
         return
     try:
         ogg, mp3 = spoken(text)
         base = f"resposta_{uuid.uuid4().hex[:8]}"
-        if OUTBOX.get() is not None:  # web chat: mp3 plays in every browser (Safari can't play ogg)
+        if OUTBOX.get() is not None and not TWIML.get():  # web chat: mp3 plays in every browser (Safari can't play ogg)
             name = store.write_media(uid, base + ".mp3", mp3)
         else:  # WhatsApp: OGG Opus shows as a voice-note bubble
             name = store.write_media(uid, base + ".ogg", ogg)
         send(phone, media=media_url(uid, name))
     except Exception:
         log.error("TTS failed:\n%s", scrubbed_tb())
-        if not sent_text:
+        if not sent_text and not TWIML.get():  # in TWIML mode the fallback text is already parked
             send(phone, text, media)
 
 
@@ -497,6 +569,20 @@ def run_intent(intent: str, phone: str, uid: str, user: dict) -> None:
         _resumo(phone, uid, user, mode)
 
 
+def fetch_media(url: str, get=None) -> bytes | None:
+    """Twilio media, with our credentials first, then without (trial numbers can refuse them).
+    Never mistakes an error page for her audio or photo."""
+    get = get or httpx.get
+    for auth in ((SID, TOKEN), None):
+        r = get(url, auth=auth, follow_redirects=True, timeout=30)
+        ctype = r.headers.get("content-type", "")
+        if r.status_code == 200 and not ctype.startswith(("application/json", "text/html", "application/xml")):
+            return r.content
+        log.error("media download refused: HTTP %s (%s), %s credentials", r.status_code, ctype.split(";")[0],
+                  "with" if auth else "without")
+    return None
+
+
 def _download(form: dict, phone: str):
     """Returns (raw, ctype, heard) or None if a reply was already sent."""
     raw, ctype, heard = None, "", ""
@@ -507,7 +593,10 @@ def _download(form: dict, phone: str):
         elif form.get("LocalMedia"):  # simulate.py
             raw = Path(form["LocalMedia"]).read_bytes()
         else:
-            raw = httpx.get(form["MediaUrl0"], auth=(SID, TOKEN), follow_redirects=True, timeout=30).content
+            raw = fetch_media(form["MediaUrl0"])
+            if raw is None:
+                send(phone, "Não consegui abrir esse arquivo. Pode mandar de novo?")
+                return None
         if not (ctype.startswith("audio/") or ctype in IMAGE_TYPES):
             send(phone, UNSUPPORTED)
             return None
