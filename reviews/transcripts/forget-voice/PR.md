@@ -19,3 +19,4 @@ Speech-to-text (her incoming voice notes). Whether ElevenLabs retains STT audio 
 - If deletion fails (permission revoked, API down), the text stays in ElevenLabs history and only an error is logged.
 - Only the newest 60 history items are searched. Under heavy concurrent traffic a reply could fall outside that window; it's then logged as not found.
 - If the ElevenLabs SDK retried a request on its own after `forget` ran, a duplicate could survive. The SDK only retries failed requests, which create no history item.
+- Deletion runs in a background thread: a server restart in the second right after a reply would kill it, and that text would stay in ElevenLabs history without an error.
