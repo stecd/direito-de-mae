@@ -13,7 +13,8 @@ def test_privacy_facts_match_the_code():
     s = brain.SYSTEM
     assert "FATOS SOBRE VOCÊ" in s
     assert f"{store.DEFAULT_KEEP_DAYS} dias sem falar" in s and f"{store.SAVED_KEEP_DAYS} dias" in s
-    assert "Não guarda o nome nem o número" in s
+    assert "Não guarda o número dela" in s and "Não guarda o nome" not in s  # her name may be in what she writes
+    assert "podem guardar cópias" in s and "Não diga que ninguém mais pode ver" in s  # vendors
     assert "chave é destruída" in s          # crypto-shredding
     assert "Twilio" in s and "minutos" in s   # Twilio cleanup
     assert "Mensagens temporárias" in s       # the phone is the biggest risk
@@ -43,10 +44,32 @@ def test_rules_are_numbered_in_order():
     assert nums == list(range(len(nums)))
 
 
-def test_employee_rights_never_for_non_employees_rule():
+def test_fired_while_pregnant_keeps_employee_rights():
     s = brain.SYSTEM
-    assert "NUNCA para autônoma, diarista, MEI ou desempregada" in s
-    assert "diarista que trabalha até 2 dias" in s
+    assert "demitida grávida é clt ou domestica" in s and "nunca desempregada" in s
+    assert "demitida grávida CONTINUA com esses direitos" in s
+    assert '"desempregada" é só para quem já estava sem emprego antes da gravidez' in s
+
+
+def test_sem_carteira_and_diarista_classified_by_real_work():
+    s = brain.SYSTEM
+    assert "mais de 2 dias por semana na mesma casa = domestica, mesmo sem carteira" in s
+    assert "diarista de até 2 dias por semana" in s
+    assert "NUNCA para autônoma, diarista" not in s  # the old blanket ban on every diarista
+
+
+def test_doubt_means_mention_not_silence():
+    assert "NUNCA fique em silêncio" in brain.SYSTEM and "Se não tiver certeza de que um direito vale para ela, não cite" not in brain.SYSTEM
+
+
+def test_work_type_is_confirmed_and_correctable():
+    assert "confirme com ela" in brain.SYSTEM
+    note = brain.work_type_note("autonoma")
+    assert "pode estar errado" in note and "corrija" in note
+
+
+def test_violated_right_beats_the_length_cap():
+    assert "mesmo que passe do limite" in brain.SYSTEM
 
 
 def test_known_work_type_reaches_claude():
@@ -61,4 +84,20 @@ def test_handler_passes_the_stored_work_type(monkeypatch):
     bot.msg("trabalho 2 dias por semana")
     bot.msg("e o salário-maternidade?")
     assert bot.work_types[-1] == "autonoma"  # second call knows what the first one learned
+    bot.brain_out = {"reply": "ok", "work_type": "domestica"}  # she corrects: "na verdade são 3 dias"
+    bot.msg("na verdade são 3 dias por semana")
+    bot.brain_out = {"reply": "ok"}
+    bot.msg("e agora?")
+    assert bot.work_types[-1] == "domestica"
+    assert "empregada doméstica" in bot.msg("meus dados")  # she can see what we understood
+    store.delete(bot.uid)
+
+
+def test_a_greeting_is_not_answered_twice(monkeypatch):
+    from test_safety import Bot
+    bot = Bot(monkeypatch)
+    bot.msg("oi")
+    bot.msg("1")
+    bot.msg("sim")
+    assert not bot.calls  # no Claude call (and no voice reply) just to say hello again
     store.delete(bot.uid)
