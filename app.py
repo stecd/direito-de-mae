@@ -31,12 +31,13 @@ load_dotenv()
 
 import httpx  # noqa: E402
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, Response  # noqa: E402
-from fastapi.responses import FileResponse  # noqa: E402
+from fastapi.responses import FileResponse, PlainTextResponse  # noqa: E402
 from twilio.request_validator import RequestValidator  # noqa: E402
 from twilio.rest import Client  # noqa: E402
 
 import brain  # noqa: E402
 import dossie  # noqa: E402
+import meta  # noqa: E402
 import onboarding as ob  # noqa: E402
 import store  # noqa: E402
 import voice  # noqa: E402
@@ -210,6 +211,8 @@ async def _janitor():
             if SID != "none" and os.environ.get("DRY_RUN") != "1":
                 twilio_cleanup()
             prune_locks()
+            if meta.configured():
+                meta.cleanup_uploads()
         except Exception:
             log.error("janitor failed:\n%s", scrubbed_tb())
         await asyncio.sleep(CLEANUP_EVERY)
@@ -235,6 +238,9 @@ def send(to: str, body: str = "", media: str | None = None) -> None:
     if os.environ.get("DRY_RUN") == "1":  # local testing: print instead of spending a Twilio message
         print(f"\n>>> REPLY: {body}" + (f"\n>>> MEDIA: {media}" if media else ""))
         return
+    if to.startswith(meta.PREFIX):  # WhatsApp via Meta's Cloud API: upload the file itself
+        meta.send(to, body, _media_bytes(media) if media else None)
+        return
     kw = {"from_": FROM, "to": to}
     if body:
         kw["body"] = body[:1500]
@@ -242,6 +248,14 @@ def send(to: str, body: str = "", media: str | None = None) -> None:
         kw["media_url"] = [media]
     msg = twilio.messages.create(**kw)
     _queue_cleanup(msg.sid)
+
+
+def _media_bytes(url: str) -> tuple[bytes, str] | None:
+    """Our own signed /media link → (decrypted bytes, file name), for channels that upload files."""
+    path = url.split("/media/", 1)[1].split("?", 1)[0]
+    uid, name = path.split("/", 1)
+    data = store.read_media(uid, name)
+    return (data, name) if data is not None else None
 
 
 def _sign(uid: str, name: str, exp: int) -> str:
@@ -273,6 +287,25 @@ async def whatsapp(request: Request, tasks: BackgroundTasks):
     tasks.add_task(handle, form)
     # Answer Twilio immediately (it stops waiting after 15s); the real reply goes out later.
     return Response(EMPTY_TWIML, media_type="application/xml")
+
+
+@app.get("/meta")
+def meta_verify(request: Request):
+    """Meta's one-time webhook verification."""
+    challenge = meta.verify(dict(request.query_params))
+    if challenge is None:
+        raise HTTPException(403)
+    return PlainTextResponse(challenge)
+
+
+@app.post("/meta")
+async def meta_webhook(request: Request, tasks: BackgroundTasks):
+    raw = await request.body()
+    if not meta.signature_ok(raw, request.headers.get("X-Hub-Signature-256", "")):
+        raise HTTPException(403, "bad signature")
+    for form in meta.to_forms(json.loads(raw or b"{}")):
+        tasks.add_task(handle, form)
+    return {"ok": True}  # answer fast; Meta retries slow webhooks
 
 
 @app.get("/media/{uid}/{name}")
@@ -502,7 +535,12 @@ def _download(form: dict, phone: str):
     raw, ctype, heard = None, "", ""
     if int(form.get("NumMedia", "0") or 0):
         ctype = form.get("MediaContentType0", "")
-        if form.get("RawMedia") is not None:  # web chat upload
+        if form.get("MetaMediaId"):  # WhatsApp via Meta
+            raw = meta.download(form["MetaMediaId"])
+            if raw is None:
+                send(phone, "Não consegui abrir esse arquivo. Pode mandar de novo?")
+                return None
+        elif form.get("RawMedia") is not None:  # web chat upload
             raw = form["RawMedia"]
         elif form.get("LocalMedia"):  # simulate.py
             raw = Path(form["LocalMedia"]).read_bytes()
