@@ -415,6 +415,39 @@ def test_legacy_plaintext_media_still_reaches_the_resumo():
     store.delete(uid)
 
 
+def test_legacy_media_with_unreadable_key_is_skipped_not_crashing(monkeypatch):
+    from cryptography.fernet import Fernet
+    uid = store.user_id("whatsapp:+551198")
+    store.save(uid, {"history": [], "entries": [], "profile": {}})
+    (store.media_dir(uid) / "prova_old.jpg").write_bytes(b"\xff\xd8old")
+    monkeypatch.setenv("MASTER_KEY", Fernet.generate_key().decode())
+    assert store.read_media(uid, "prova_old.jpg") is None
+    monkeypatch.delenv("MASTER_KEY")
+    store.delete(uid)
+
+
+def test_twilio_cleanup_survives_a_crash_mid_loop(monkeypatch):
+    monkeypatch.setattr(app, "CLEANUP_FILE", store.DATA_DIR / "_test_cleanup2.json")
+    app.CLEANUP_FILE.unlink(missing_ok=True)
+    app._queue_cleanup("SM1")
+
+    class Dies:
+        def messages(self, sid):
+            raise SystemExit("server restarted")
+    try:
+        app.twilio_cleanup(now=time.time() + 300, client=Dies())
+    except SystemExit:
+        pass
+    assert [i["sid"] for i in app._load_cleanup()] == ["SM1"]  # still queued for the next run
+    app.CLEANUP_FILE.unlink(missing_ok=True)
+
+
+def test_idle_locks_are_pruned():
+    app.user_lock("someone")
+    app.prune_locks()
+    assert "someone" not in app._LOCKS
+
+
 def test_legacy_user_without_last_seen_expires_by_file_age():
     uid = store.user_id("whatsapp:+551197")
     (store.DATA_DIR / f"{uid}.json").write_text('{"history": [], "entries": [], "profile": {}}')

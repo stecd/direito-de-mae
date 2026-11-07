@@ -195,5 +195,6 @@ Still to do on WhatsApp only: the checklist in section 3. Set `MASTER_KEY` in `.
 ## Go-live checklist (before the WhatsApp number goes public)
 - [ ] **`MASTER_KEY` set in the server's environment** (generate it with the command in `.env.example`). Keep a copy in a password manager, not in the repo or next to `data/`. Without it, the server falls back to a development key file inside `data/`, which sits right next to the data it protects.
 - [ ] `HASH_SALT` set to a long random value (not the default).
+- [ ] Run **one** uvicorn worker on one instance. The per-user lock is in memory; several workers would let a slow message re-save data after APAGAR. Scaling out needs a file or database lock first.
 - [ ] Voice replies: `VOICE_REPLIES=1` and ElevenLabs credits topped up (off by default; only for the demo for now).
 - [ ] WhatsApp-only checklist in section 3 passed.

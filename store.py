@@ -128,10 +128,10 @@ def read_media(uid: str, name: str) -> bytes | None:
     if DATA_DIR.resolve() not in path.parents or not path.is_file():
         return None
     raw = path.read_bytes()
-    if not raw.startswith(b"gAAAAA"):  # media saved before encryption: encrypt it now
-        write_media(uid, name, raw)
-        return raw
     try:
+        if not raw.startswith(b"gAAAAA"):  # media saved before encryption: encrypt it now
+            write_media(uid, name, raw)
+            return raw
         fer = _fernet(uid, create=False)
         return fer.decrypt(raw) if fer else None
     except (InvalidToken, Unreadable):

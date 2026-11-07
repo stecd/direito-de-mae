@@ -1,0 +1,30 @@
+[
+ {
+  "round": 1,
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {"n": 1, "label": "blocking", "text": "No per-user lock: a message still inside the AI call when APAGAR is confirmed re-saves her full file, and a new key is created.", "response": "Fixed: per-uid lock around _handle. Regression test fails with the lock removed (checked).", "commit": "4afd44e"},
+   {"n": 2, "label": "blocking", "text": "With a pending delete, a voice note 'não, não quero apagar não' contains APAGAR and deletes everything.", "response": "Fixed: says_apagar/confirms_delete require apagar to lead the sentence and reject any NAO.", "commit": "4afd44e"},
+   {"n": 3, "label": "blocking", "text": "If MASTER_KEY changes, load crashes before APAGAR (she can never delete) and sweep skips the file forever.", "response": "Fixed: store.Unreadable; APAGAR deletes without decrypting, otherwise she is told to send APAGAR; sweep falls back to file age.", "commit": "4afd44e"},
+   {"n": 4, "label": "blocking", "text": "After MUDAR every message is parsed as a mode choice: APAGAR is swallowed, and substring matching ('ler' in 'mulher') drops real reports.", "response": "Fixed: keywords and messages over 8 words leave the step; whole-word/stem matching.", "commit": "4afd44e"},
+   {"n": 5, "label": "suggestion", "text": "Consent refusal voice note recreates her key file and folder after delete.", "response": "Fixed: uses _shared.", "commit": "4afd44e"},
+   {"n": 6, "label": "suggestion", "text": "Legacy users never expire; legacy plaintext media silently drops out of the resumo.", "response": "Fixed: expiry by file age when last_seen is missing; plaintext media encrypted on first read.", "commit": "4afd44e"},
+   {"n": 7, "label": "suggestion", "text": "Voice reply files pile up forever.", "response": "Fixed: sweep clears resposta_* after an hour.", "commit": "4afd44e"},
+   {"n": 8, "label": "suggestion", "text": "Twilio cleanup queue read-modify-write races across threads.", "response": "Fixed: lock.", "commit": "4afd44e"},
+   {"n": 9, "label": "question", "text": "A first-contact voice note goes to ElevenLabs STT before consent.", "response": "Kept on purpose (needed to understand a spoken answer); PR text now discloses it.", "commit": "4afd44e"},
+   {"n": 10, "label": "question", "text": "Tracebacks can carry her words in exception messages.", "response": "Fixed: scrubbed_tb keeps frames and exception type only.", "commit": "4afd44e"},
+   {"n": 11, "label": "suggestion", "text": "A SALVAR intent injected via a forwarded screenshot silently extends retention to a year.", "response": "Pushback: non-destructive, the reply states it, APAGAR undoes it; a confirm adds friction to the command that protects her evidence. Reviewer accepted.", "commit": null}
+  ]
+ },
+ {
+  "round": 2,
+  "verdict": "APPROVE",
+  "findings": [
+   {"n": 1, "label": "suggestion", "text": "Legacy plaintext media with an unreadable key raises out of read_media (500 / resumo crash).", "response": "Fixed: inside the try; test added.", "commit": "round-2 follow-up"},
+   {"n": 2, "label": "suggestion", "text": "Cleanup queue is emptied before processing; a restart mid-loop loses SIDs.", "response": "Fixed: file rewritten only at the end; test added.", "commit": "round-2 follow-up"},
+   {"n": 3, "label": "suggestion", "text": "Lock map grows forever.", "response": "Fixed: janitor prunes idle locks; test added.", "commit": "round-2 follow-up"},
+   {"n": 4, "label": "question", "text": "The lock is per process; multiple workers bring the race back.", "response": "Added to the go-live checklist: one worker, one instance, until a file/DB lock exists.", "commit": "round-2 follow-up"},
+   {"n": 5, "label": "suggestion", "text": "Unreadable users fall back to 90 days even after SALVAR.", "response": "Accepted as is: the data is unreadable anyway.", "commit": null}
+  ]
+ }
+]

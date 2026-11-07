@@ -177,7 +177,6 @@ def twilio_cleanup(now: float | None = None, client=None) -> int:
     client = client or twilio
     with CLEANUP_LOCK:
         queue = _load_cleanup()
-        CLEANUP_FILE.write_text("[]")  # new SIDs queued while we work are appended to an empty list
     keep, done = [], 0
     for item in queue:
         if now - item["at"] < 120:
@@ -194,8 +193,11 @@ def twilio_cleanup(now: float | None = None, client=None) -> int:
                 keep.append(item)
             else:
                 log.error("twilio cleanup gave up on a message after 6 tries")
+    # Rewrite only at the end: a crash mid-loop keeps every SID for the next run.
+    # SIDs queued by handlers meanwhile are kept too.
+    seen = {i["sid"] for i in queue}
     with CLEANUP_LOCK:
-        CLEANUP_FILE.write_text(json.dumps(_load_cleanup() + keep))
+        CLEANUP_FILE.write_text(json.dumps(keep + [i for i in _load_cleanup() if i["sid"] not in seen]))
     return done
 
 
@@ -207,6 +209,7 @@ async def _janitor():
                 log.info("retention: deleted %d expired user(s)", len(gone))
             if SID != "none" and os.environ.get("DRY_RUN") != "1":
                 twilio_cleanup()
+            prune_locks()
         except Exception:
             log.error("janitor failed:\n%s", scrubbed_tb())
         await asyncio.sleep(CLEANUP_EVERY)
@@ -325,6 +328,13 @@ _LOCKS_GUARD = threading.Lock()
 def user_lock(uid: str) -> threading.Lock:
     with _LOCKS_GUARD:
         return _LOCKS.setdefault(uid, threading.Lock())
+
+
+def prune_locks() -> None:
+    """Forget locks nobody holds, so memory doesn't keep every user id that ever wrote."""
+    with _LOCKS_GUARD:
+        for uid in [u for u, lk in _LOCKS.items() if not lk.locked()]:
+            del _LOCKS[uid]
 
 
 def handle(form: dict) -> None:
