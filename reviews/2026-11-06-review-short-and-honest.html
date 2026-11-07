@@ -1,0 +1,156 @@
+<title>Short and Honest</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one reading column, same tokens as the Reviews index */
+  :root{
+    --ground:#EDF0F3; --raised:#FFFFFF; --sunk:#E3E8ED;
+    --ink:#141B22; --muted:#5A6773; --faint:#8A96A2; --rule:#D5DCE3;
+    --accent:#1f5fa8; --accent-soft:#e3edf8;
+    --done:#0f7b6c; --done-soft:#dff0ec; --wip:#9a6a00; --wip-soft:#f8efd7;
+    --add:#e6f4ea; --addink:#1a6b34; --del:#fbe9eb; --delink:#9b2335;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.06);
+    --serif:"Iowan Old Style","Charter",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}}
+  :root[data-theme="dark"]{
+    --ground:#0F141A; --raised:#161D25; --sunk:#1C242D; --ink:#E3E9EF; --muted:#94A2AF; --faint:#6C7A87;
+    --rule:#26303A; --accent:#6ab0f3; --accent-soft:#16283d; --done:#4fd1bd; --done-soft:#12332e;
+    --wip:#e5b25a; --wip-soft:#3a2f16; --add:#12301d; --addink:#7fd69a; --del:#3a1619; --delink:#f08a96;
+    --shadow:0 1px 2px rgba(0,0,0,.4); color-scheme:dark}
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.6;
+    padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  a{color:var(--accent)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--sunk);padding:1px 5px;border-radius:4px;word-break:break-word}
+  .mast{background:var(--raised);border:1px solid var(--rule);border-top:3px solid var(--ink);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+  .eyebrow{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+  .eyebrow a{color:inherit;text-decoration:none}.eyebrow a:hover{text-decoration:underline}
+  h1{font-size:30px;font-weight:600;margin:0;text-wrap:balance;line-height:1.2}
+  h2{font-size:21px;font-weight:600;margin:0 0 8px;text-wrap:balance}
+  h3.tfile{font-family:var(--sans);font-size:13.5px;margin:10px 0 4px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-family:var(--sans);font-size:11.5px}
+  .chip{padding:3px 9px;border-radius:99px;font-weight:700;background:var(--sunk);color:var(--muted)}
+  .chip.wait{background:var(--wip-soft);color:var(--wip)} .chip.done{background:var(--done-soft);color:var(--done)}
+  .note{font-family:var(--sans);font-size:13px;color:var(--muted);margin:12px 0 0}
+  section p{margin:0 0 10px;max-width:66ch}
+  .ba{display:grid;gap:10px}
+  .pair{background:var(--raised);border:1px solid var(--rule);border-radius:12px;padding:12px 14px}
+  .pair .q{font-family:var(--sans);font-size:13px;font-weight:700;margin:0 0 8px}
+  .pair .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  @media (max-width:600px){.pair .cols{grid-template-columns:minmax(0,1fr)}}
+  .pair .was,.pair .now{font-family:var(--sans);font-size:13px;border-radius:8px;padding:8px 10px;min-width:0}
+  .pair .was{background:var(--del);color:var(--delink)} .pair .now{background:var(--add);color:var(--addink)}
+  .pair .tag{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;opacity:.85}
+  .callout{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:15px;max-width:66ch}
+  ul.plain{margin:0 0 10px;padding-left:20px;max-width:66ch} ul.plain li{margin-bottom:6px}
+  .lbl{font-family:var(--sans);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:99px;background:var(--sunk);color:var(--muted);margin-right:6px}
+  .lbl.blk{background:var(--del);color:var(--delink)}
+  .tsum{font-family:var(--sans);font-size:14px;margin:0 0 8px}.tsum.green b{color:var(--done)}.tsum.red b{color:var(--delink)}
+  details summary{font-family:var(--sans);font-size:13px;cursor:pointer;color:var(--accent)}
+  ul.tests{list-style:none;padding:0;margin:8px 0;font-size:13px;display:grid;gap:3px}
+  ul.tests li{display:flex;gap:8px;min-width:0}ul.tests .ok span{color:var(--done)}ul.tests .bad span{color:var(--delink)}
+  pre.cmd{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:8px 10px;border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+  .rev{font-family:var(--sans);font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Direito de Mãe • <a href="https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr" target="_blank" rel="noopener">All Reviews</a></p>
+    <h1>Short and Honest</h1>
+    <div class="chips">
+      <span class="chip done" data-review-branch="review/short-and-honest">✓ Reviewed · merged 06 Nov 2026</span>
+      <span class="chip">Short review</span>
+      <span class="chip">PR <a href="https://github.com/stecd/direito-de-mae/pull/4" target="_blank" rel="noopener">stecd/direito-de-mae#4</a></span>
+    </div>
+    <p class="note">Short review: one idea, what the bot is told about itself and about her, so this page is one scroll. To comment, select any text and use the comment control in the artifact viewer.</p>
+  </header>
+
+  <section>
+    <h2>What changed</h2>
+    <p>Your web-chat rehearsal turned up answers a mother should never get. These are the same questions, asked through the real Claude before and after this change:</p>
+    <div class="ba">
+      <div class="pair"><p class="q">"Se minha patroa me levar para a justiça, eles podem ler estas mensagens?"</p><div class="cols">
+        <div class="was"><span class="tag">Before</span>"Não sei com certeza… O PDF só é gerado se você escrever RESUMO."</div>
+        <div class="now"><span class="tag">After</span>Defensoria for the legal part; we keep only what she sends, with a key only hers; the phone is the main risk, so turn on disappearing messages.</div></div></div>
+      <div class="pair"><p class="q">"Alguém mais consegue ler o que eu te mando?"</p><div class="cols">
+        <div class="was"><span class="tag">Before</span>No privacy facts to answer from.</div>
+        <div class="now"><span class="tag">After</span>"As mensagens passam por empresas de tecnologia que podem guardar cópias por um tempo…" It never claims nobody else can see them.</div></div></div>
+      <div class="pair"><p class="q">"Fui demitida grávida… eu era babá com carteira."</p><div class="cols">
+        <div class="was"><span class="tag">Before the review</span>The first draft of this PR would have filed her as "desempregada" and banned the stability she still has.</div>
+        <div class="now"><span class="tag">After</span>Domestic worker, confirmed back to her; protection until 20/06/2027; sindicato, then Defensoria.</div></div></div>
+      <div class="pair"><p class="q">"Sou diarista, trabalho 3 dias por semana, sem carteira."</p><div class="cols">
+        <div class="was"><span class="tag">Before the review</span>"Diarista" alone would have meant no employee rights.</div>
+        <div class="now"><span class="tag">After</span>"Você é doméstica… mesmo sem carteira. Certo?" Stability, and the note that a court can recognise the job.</div></div></div>
+      <div class="pair"><p class="q">Length</p><div class="cols">
+        <div class="was"><span class="tag">Before</span>7–9 sentences, 500–700 characters per reply.</div>
+        <div class="now"><span class="tag">After</span>273–338 characters in the live check. At most 500 when a right is violated, so the article and referral always fit.</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The one decision worth reading</h2>
+    <div class="callout">The bot now classifies her by the job she <b>had</b> when she got pregnant or was dismissed, not by her situation today. Rights under the labour laws (CLT and LC 150, the domestic-worker law) attach to that job. A mother who was fired while pregnant is not "desempregada" for this purpose: that label is only for someone already without a job before the pregnancy. More than 2 days a week in one house makes her a domestic worker, with or without carteira, whatever she calls herself. When it's unclear whether a right applies, the bot says it may apply and sends her to the sindicato. It never stays silent.</div>
+    <p>The classification is stated back to her ("Entendi: você trabalha como doméstica… Certo?"), shown in MEUS DADOS, and passed to Claude on every message as "possibly wrong". So a correction like "na verdade são 3 dias" takes effect.</p>
+  </section>
+
+  <section>
+    <h2>Smaller changes</h2>
+    <ul class="plain">
+      <li>The privacy facts the bot may state are written into its instructions. Tests tie them to the code, so the 90/365 days can't drift from <code>store.py</code>.</li>
+      <li>No instruction tells her to type an exact word any more.</li>
+      <li>Consent and MEUS DADOS no longer say "não guardo seu nome" (her name is in whatever she writes) or "senha" (it's a key).</li>
+      <li>A first message that is only a greeting ("oi") isn't answered a second time after consent. That saves a Claude call and, in voice mode, about 250 credits.</li>
+      <li>The audio-mode consent clip in <code>public/voice/</code> was removed because its text changed. Warming the cache now costs ~1,349 credits, and GO_LIVE.md is updated (74 of 100 messages, ~3,400 credits).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>The review</h2>
+    <p>The co-worker was asked whether every fact the bot now states is true, and whether the work-type rule could hide a right she has. Round 1 requested changes. Round 2 approved.</p>
+    <ul class="plain">
+      <li><span class="lbl blk">blocking</span>A mother fired while pregnant would be labelled "desempregada", and the rule then banned citing her stability. This is the bot's most important case. Fixed, and checked live.</li>
+      <li><span class="lbl blk">blocking</span>Every "diarista" and every worker without carteira was treated as a non-employee, and "if unsure, don't cite" meant silence. Fixed, and checked live.</li>
+      <li><span class="lbl blk">blocking</span>A wrong work type had no way to be corrected. It's now confirmed with her, shown to her, and correctable.</li>
+      <li><span class="lbl">fixed</span>"Não guarda o nome" overstated, and the facts implied nobody else could read her messages. The vendor fact is added.</li>
+      <li><span class="lbl">fixed</span>Round 2 caught a regression from the greeting change: "Fui demitida grávida" is 3 words and would have been dropped. Greetings are now matched by list, with a test for that exact message.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Limits</h2>
+    <ul class="plain">
+      <li><b>ElevenLabs keeps the text of every voice reply</b> in our account's history. The bot's facts only describe what <i>we</i> keep, so they stay true, but personal replies would sit there once <code>VOICE_REPLIES=1</code>. This should be closed before the voice test, by deleting each history item after it's generated.</li>
+      <li><b>The tests check the instructions, not Claude's behaviour.</b> The live checks above were run once each. A different phrasing may still get a weaker answer, so read the demo answers.</li>
+      <li><b><code>laws.md</code> still says stability "não vale para… desempregada".</b> The new rule defines the term narrowly, but the law file wasn't changed, because that file belongs to the law-check work.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Tests</h2>
+    <!-- GENERATED from pytest junit xml by make_tests.py; do not edit by hand -->
+<p class="tsum green"><b>71 of 71 passed</b> · 5.0s</p>
+<h3 class="tfile"><code>test_offline.py</code> · 20 of 20</h3>
+<details><summary>Phase 1 checks: dates, PDF, law watcher · 20 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_dates</code></li><li class="ok"><span>✓</span><code>test_fill_date</code></li><li class="ok"><span>✓</span><code>test_parse_bad_json_falls_back_to_text</code></li><li class="ok"><span>✓</span><code>test_command_normalization</code></li><li class="ok"><span>✓</span><code>test_pdf_with_tricky_characters</code></li><li class="ok"><span>✓</span><code>test_store_roundtrip_and_delete</code></li><li class="ok"><span>✓</span><code>test_sid_validation</code></li><li class="ok"><span>✓</span><code>test_spoken_resumo_matching</code></li><li class="ok"><span>✓</span><code>test_rate_limiter</code></li><li class="ok"><span>✓</span><code>test_leave_window_and_tags</code></li><li class="ok"><span>✓</span><code>test_missing_due_date_asks_once</code></li><li class="ok"><span>✓</span><code>test_pdf_embeds_evidence_images</code></li><li class="ok"><span>✓</span><code>test_leave_tag_alone_still_asks</code></li><li class="ok"><span>✓</span><code>test_pdf_skips_corrupt_image_and_wraps_rows</code></li><li class="ok"><span>✓</span><code>test_dossie_rights_follow_work_type</code></li><li class="ok"><span>✓</span><code>test_law_warning_only_when_unreviewed_change</code></li><li class="ok"><span>✓</span><code>test_check_laws_parses_index_and_articles</code></li><li class="ok"><span>✓</span><code>test_check_laws_detects_new_act_changed_and_missing_article</code></li><li class="ok"><span>✓</span><code>test_check_laws_dou_bad_markup_is_an_error_not_a_crash</code></li><li class="ok"><span>✓</span><code>test_check_laws_refuses_baseline_with_gaps</code></li></ul></details>
+<h3 class="tfile"><code>test_prompt.py</code> · 15 of 15</h3>
+<details><summary>What Claude is told, and the handler around it · 15 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_privacy_facts_match_the_code</code></li><li class="ok"><span>✓</span><code>test_privacy_questions_must_not_get_nao_sei</code></li><li class="ok"><span>✓</span><code>test_no_rule_says_she_must_type_an_exact_word</code></li><li class="ok"><span>✓</span><code>test_reply_length_limit_is_stated_with_the_real_number</code></li><li class="ok"><span>✓</span><code>test_rules_are_numbered_in_order</code></li><li class="ok"><span>✓</span><code>test_fired_while_pregnant_keeps_employee_rights</code></li><li class="ok"><span>✓</span><code>test_sem_carteira_and_diarista_classified_by_real_work</code></li><li class="ok"><span>✓</span><code>test_doubt_means_mention_not_silence</code></li><li class="ok"><span>✓</span><code>test_work_type_is_confirmed_and_correctable</code></li><li class="ok"><span>✓</span><code>test_violated_right_beats_the_length_cap</code></li><li class="ok"><span>✓</span><code>test_known_work_type_reaches_claude</code></li><li class="ok"><span>✓</span><code>test_handler_passes_the_stored_work_type</code></li><li class="ok"><span>✓</span><code>test_a_greeting_is_not_answered_twice</code></li><li class="ok"><span>✓</span><code>test_short_real_first_message_is_still_answered</code></li><li class="ok"><span>✓</span><code>test_greeting_list</code></li></ul></details>
+<h3 class="tfile"><code>test_safety.py</code> · 36 of 36</h3>
+<details><summary>Storage · 4 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_store_files_are_encrypted_and_shredded</code></li><li class="ok"><span>✓</span><code>test_read_media_refuses_path_traversal</code></li><li class="ok"><span>✓</span><code>test_legacy_plaintext_file_still_loads_then_saves_encrypted</code></li><li class="ok"><span>✓</span><code>test_sweep_deletes_only_expired_users</code></li></ul></details>
+<details><summary>Links, Twilio, logs · 3 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_signed_media_links_expire_and_cant_be_forged</code></li><li class="ok"><span>✓</span><code>test_media_endpoint_rejects_unsigned_links</code></li><li class="ok"><span>✓</span><code>test_twilio_cleanup_deletes_after_delivery_and_retries</code></li></ul></details>
+<details><summary>Onboarding words · 3 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_parse_mode_from_her_own_words</code></li><li class="ok"><span>✓</span><code>test_yes_no</code></li><li class="ok"><span>✓</span><code>test_keywords_skip_ai</code></li></ul></details>
+<details><summary>The real handler · 12 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_onboarding_full_interview</code></li><li class="ok"><span>✓</span><code>test_onboarding_no_consent_keeps_nothing</code></li><li class="ok"><span>✓</span><code>test_apagar_needs_confirmation</code></li><li class="ok"><span>✓</span><code>test_apagar_confirmation_is_cancelled_by_another_message</code></li><li class="ok"><span>✓</span><code>test_delete_in_her_own_words_still_asks_first</code></li><li class="ok"><span>✓</span><code>test_change_mode_in_her_own_words</code></li><li class="ok"><span>✓</span><code>test_salvar_extends_retention_and_meus_dados_reports</code></li><li class="ok"><span>✓</span><code>test_resumo_pdf_is_encrypted_with_signed_link</code></li><li class="ok"><span>✓</span><code>test_reply_mode_is_honoured</code></li><li class="ok"><span>✓</span><code>test_logs_never_contain_message_text</code></li><li class="ok"><span>✓</span><code>test_voice_replies_off_by_default</code></li><li class="ok"><span>✓</span><code>test_fixed_messages_are_voiced_once_then_cached</code></li></ul></details>
+<details><summary>Review fixes · 14 tests</summary><ul class="tests"><li class="ok"><span>✓</span><code>test_slow_message_cannot_bring_data_back_after_apagar</code></li><li class="ok"><span>✓</span><code>test_spoken_negation_never_confirms_delete</code></li><li class="ok"><span>✓</span><code>test_spoken_negation_with_pending_delete_keeps_data</code></li><li class="ok"><span>✓</span><code>test_changed_master_key_still_lets_her_delete</code></li><li class="ok"><span>✓</span><code>test_sweep_deletes_unreadable_files_by_age</code></li><li class="ok"><span>✓</span><code>test_mode_change_does_not_trap_her</code></li><li class="ok"><span>✓</span><code>test_report_words_are_not_mode_choices</code></li><li class="ok"><span>✓</span><code>test_consent_refusal_leaves_no_key_or_folder</code></li><li class="ok"><span>✓</span><code>test_legacy_plaintext_media_still_reaches_the_resumo</code></li><li class="ok"><span>✓</span><code>test_legacy_media_with_unreadable_key_is_skipped_not_crashing</code></li><li class="ok"><span>✓</span><code>test_twilio_cleanup_survives_a_crash_mid_loop</code></li><li class="ok"><span>✓</span><code>test_idle_locks_are_pruned</code></li><li class="ok"><span>✓</span><code>test_legacy_user_without_last_seen_expires_by_file_age</code></li><li class="ok"><span>✓</span><code>test_tracebacks_in_logs_drop_the_exception_message</code></li></ul></details>
+    <pre class="cmd">.venv/bin/python -m pytest -q        # all three suites, no API keys needed</pre>
+  </section>
+
+  <footer class="rev">
+    <b>Revisions</b><br>v1 (current): first publish, covers <code>a0e2762</code> after review round 2.
+  </footer>
+</div>

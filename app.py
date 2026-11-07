@@ -413,6 +413,11 @@ def _expiry(user: dict) -> str:
     return datetime.fromtimestamp(store.expires_at(user)).strftime("%d/%m/%Y")
 
 
+WORK_TYPE_WORDS = {"clt": "trabalha com carteira", "domestica": "é empregada doméstica",
+                   "servidora": "é servidora pública", "autonoma": "trabalha por conta própria",
+                   "desempregada": "estava sem emprego antes da gravidez", "rural": "é trabalhadora rural"}
+
+
 def my_data(user: dict) -> str:
     n = len(user["entries"])
     files = sum(1 for e in user["entries"] if e.get("file"))
@@ -422,8 +427,11 @@ def my_data(user: dict) -> str:
     parts = [f"Tenho guardado: {n} registro(s), {files} print(s) ou áudio(s)"]
     if due:
         parts.append(f"a data prevista do parto ({date.fromisoformat(due):%d/%m/%Y})")
+    wt = WORK_TYPE_WORDS.get(user["profile"].get("work_type"))
+    if wt:
+        parts.append(f"que você {wt} (se estiver errado, me diga)")
     parts.append(f"e que você prefere {how}")
-    return (", ".join(parts) + ". Não guardo seu nome nem seu número. "
+    return (", ".join(parts) + ". Não guardo seu número. "
             f"Se você não falar comigo até {_expiry(user)}, eu apago tudo. "
             "Mande RESUMO para receber uma cópia, SALVAR para guardar por mais tempo, ou APAGAR para apagar agora.")
 
@@ -493,7 +501,7 @@ def _onboard(phone: str, uid: str, user: dict, said: str, spoken: bool, is_new: 
         # First contact: we don't know yet whether she reads or listens, so ask in both.
         # Keep only what she said (text or transcript) to answer it after she agrees.
         p["onboarding"] = "mode"
-        if said.strip():
+        if not ob.is_greeting(said):  # "oi", "bom dia" need no second answer after consent
             p["pending_first"] = said.strip()[:600]
         store.save(uid, user)
         say(phone, uid, f"{ob.WELCOME}\n\n{ob.MODE_Q}", mode=ob.BOTH)
@@ -504,7 +512,7 @@ def _onboard(phone: str, uid: str, user: dict, said: str, spoken: bool, is_new: 
     if step in ("mode", "mode_change"):
         m = ob.parse_mode(said, spoken) if len(said.split()) <= 8 else None
         if m is None:
-            if step == "mode" and said.strip() and not p.get("pending_first"):
+            if step == "mode" and said.strip() and not ob.is_greeting(said) and not p.get("pending_first"):
                 p["pending_first"] = said.strip()[:600]
             store.save(uid, user)
             say(phone, uid, ob.MODE_AGAIN, mode=ob.BOTH)
@@ -614,7 +622,7 @@ def _handle(form: dict) -> None:
 
 def _converse(phone: str, uid: str, user: dict, text: str, content: list, history_note: str,
               saved_file: str | None = None) -> None:
-    out = brain.think(user["history"], content, user["entries"])
+    out = brain.think(user["history"], content, user["entries"], user["profile"].get("work_type"))
 
     if out.get("due_date"):
         try:

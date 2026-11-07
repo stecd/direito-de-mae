@@ -1,0 +1,23 @@
+[
+ {
+  "round": 1,
+  "verdict": "REQUEST_CHANGES",
+  "findings": [
+   {"n": 1, "label": "blocking", "text": "Rule 1 banned employee rights for 'desempregada': a mother fired while pregnant would be classified desempregada and lose the stability she still has against the ex-employer.", "response": "Fixed: classify by the job she had when pregnant or dismissed; fired-while-pregnant is clt/domestica and keeps those rights. Checked live with Claude.", "commit": "c7848d9"},
+   {"n": 2, "label": "blocking", "text": "Every 'diarista' and every 'sem carteira' treated as non-employee; 'if unsure, don't cite' defaults to silence.", "response": "Fixed: >2 days in one house = domestica even without carteira or if she says diarista; doubt means 'pode valer, confirme no sindicato'. Checked live.", "commit": "c7848d9"},
+   {"n": 3, "label": "blocking", "text": "A wrong or stale work_type has no way out and shapes the rest of the conversation.", "response": "Fixed: confirmed with her when set or changed; note says it may be wrong; MEUS DADOS shows it; correction test.", "commit": "c7848d9"},
+   {"n": 4, "label": "suggestion", "text": "'Não guarda o nome' overstates: her name is in whatever she writes.", "response": "Fixed in prompt, consent and MEUS DADOS.", "commit": "c7848d9"},
+   {"n": 5, "label": "suggestion", "text": "Facts read as 'nobody else can read this', but AI, voice and sending vendors see messages and may keep copies.", "response": "Fixed: vendor fact added; 'não diga que ninguém mais pode ver'.", "commit": "c7848d9"},
+   {"n": 6, "label": "suggestion", "text": "Length cap competes with the citation and the referral.", "response": "Fixed: citation, 'Não sou advogada' and referral beat the cap.", "commit": "c7848d9"},
+   {"n": 7, "label": "question", "text": "Does onboarding's privacy wording now contradict the facts?", "response": "It did ('Não guardo seu nome', 'protegido com senha'); reworded, stale voice clip removed.", "commit": "c7848d9"}
+  ]
+ },
+ {
+  "round": 2,
+  "verdict": "APPROVE",
+  "findings": [
+   {"n": 1, "label": "suggestion", "text": "The new greeting filter (≤3 words) drops 'Fui demitida grávida'.", "response": "Fixed: match a list of greetings instead; tests for both.", "commit": "a0e2762"},
+   {"n": 2, "label": "suggestion", "text": "Violated-right replies have no ceiling now.", "response": "Fixed: never more than 500 characters.", "commit": "a0e2762"}
+  ]
+ }
+]

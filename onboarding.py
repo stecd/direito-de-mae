@@ -16,8 +16,8 @@ MODE_AGAIN = "Não entendi. Responda 1 para mensagem escrita, 2 para áudio, ou 
 MODE_OK = {TEXT: "Combinado, vou responder por mensagem escrita.",
            AUDIO: "Combinado, vou responder por áudio.",
            BOTH: "Combinado, vou responder com mensagem escrita e áudio."}
-CONSENT_Q = ("Antes de começar: eu guardo o que você me mandar, só para montar seu resumo. Não guardo seu nome "
-             "nem seu número, e tudo fica protegido com senha. Se você ficar 90 dias sem falar comigo, eu apago tudo "
+CONSENT_Q = ("Antes de começar: eu guardo o que você me mandar, só para montar seu resumo. Não guardo seu "
+             "número, e tudo fica protegido com uma chave só sua. Se você ficar 90 dias sem falar comigo, eu apago tudo "
              "sozinho. Você pode pedir para apagar a qualquer hora. Responda SIM para começar.")
 CONSENT_AGAIN = "Para eu poder guardar suas mensagens, responda SIM. Se não quiser, responda NÃO."
 CONSENT_NO = "Tudo bem. Não guardei nada. Se mudar de ideia, é só me mandar uma mensagem."
@@ -67,3 +67,13 @@ def is_no(text: str) -> bool:
 def is_yes(text: str) -> bool:
     tokens = norm(text).split()
     return bool(tokens) and not is_no(text) and any(w in _YES for w in tokens[:4])
+
+
+_GREETINGS = {"oi", "ola", "oie", "bom dia", "boa tarde", "boa noite", "tudo bem", "oi tudo bem", "ola tudo bem",
+              "oi bom dia", "oi boa tarde", "oi boa noite", "e ai", "alo", "hello", "hi"}
+
+
+def is_greeting(text: str) -> bool:
+    """Only a bare greeting. 'Fui demitida grávida' is three words and must still be answered."""
+    t = " ".join(norm(text).split())
+    return not t or t in _GREETINGS

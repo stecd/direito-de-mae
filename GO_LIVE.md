@@ -13,13 +13,13 @@ The source of truth for messages left is **Twilio console → Messaging → Try 
 | 2 | Full rehearsal in the web chat | 0 | 0 | now |
 | 3 | Go live (server + ngrok + webhook) | 0 | 0 | test day |
 | 4 | WhatsApp test, text only | **15** | 0 (+ 1 short voice note transcribed) | test day |
-| 5 | Add credits, warm the voice cache | 0 | **~1,037** | after step 4 passes |
-| 6 | WhatsApp test, voice | **12** | **~500** | same day as 5 |
+| 5 | Add credits, warm the voice cache | 0 | **~1,349** | after step 4 passes |
+| 6 | WhatsApp test, voice | **13** | **~250** | same day as 5 |
 | 7 | Demo rehearsal (once) | **21** | **~900** | demo day |
 | 8 | Demo | **21** | **~900** | demo day |
-| | **Total** | **69 + 4 used = 73 of 100** | **~3,300** | |
+| | **Total** | **70 + 4 used = 74 of 100** | **~3,400** | |
 
-Daily cap check: steps 4 + 6 = 27 (+4 if the same UTC day as before = 31). Steps 7 + 8 = 42. Both stay under 50/day, **as long as 4–6 and 7–8 fall on different days**. If a step fails, re-run only the failing message, never the whole script. That leaves a buffer of 27 messages.
+Daily cap check: steps 4 + 6 = 28 (+4 if the same UTC day as before = 32). Steps 7 + 8 = 42. Both stay under 50/day, **as long as 4–6 and 7–8 fall on different days**. If a step fails, re-run only the failing message, never the whole script. That leaves a buffer of 26 messages.
 
 ---
 
@@ -100,7 +100,7 @@ That's 15 messages. Then check the server: `ls data/` should show no `.json` fil
 
 If incoming messages show `error 12300` in `twilio_check.py` but replies arrived, it's only a warning. Change `media_type="application/xml"` to `"text/xml"` in `app.py`'s `/whatsapp` route.
 
-## 5 · Add ElevenLabs credits, warm the cache (0 msgs, ~1,037 credits)
+## 5 · Add ElevenLabs credits, warm the cache (0 msgs, ~1,349 credits)
 
 - Check on elevenlabs.io when the free plan's monthly credits reset. If that's before the demo, 10,000 is enough. Otherwise take the cheapest paid plan (Starter). It also gives the commercial license.
 - If you upgrade, delete `public/voice/` and regenerate: free-plan clips keep free-plan terms.
@@ -117,9 +117,9 @@ If incoming messages show `error 12300` in `twilio_check.py` but replies arrived
 .venv/bin/python golive/warm_voice.py --yes
 ```
 
-The first two are free. `import_voice_cache.py` copies clips that already exist in ElevenLabs' history, and `warm_voice.py` without `--yes` shows the exact cost (~1,037 today). The third generates the clips. Then commit `public/voice/`, so they're never paid for again.
+The first two are free. `import_voice_cache.py` copies clips that already exist in ElevenLabs' history, and `warm_voice.py` without `--yes` shows the exact cost (~1,349 today). The third generates the clips. Then commit `public/voice/`, so they're never paid for again.
 
-## 6 · WhatsApp test, voice (12 msgs, ~500 credits)
+## 6 · WhatsApp test, voice (13 msgs, ~250 credits)
 
 Restart uvicorn with `VOICE_REPLIES=1`.
 
@@ -127,7 +127,8 @@ Restart uvicorn with `VOICE_REPLIES=1`.
 |---|---|---|---|---|
 | 1 | `oi` | Welcome as text **and** voice note (cached) | 3 | 0 |
 | 2 | `2` | Consent as a **voice-note bubble** (not a file) | 2 | 0 |
-| 3 | `sim` | Safety tip (voice, cached) + answer to "oi" (voice) | 3 | ~300 |
+| 2b | `sim` | Safety tip (voice, cached) | 2 | 0 |
+| 3 | `qual o prazo da licença?` | Asks your due date or work type (voice) | 2 | ~250 |
 | 4 | `APAGAR` | Confirm question (voice, cached after step 5) | 2 | 0 |
 | 5 | `APAGAR` | "Pronto…" (voice, cached) | 2 | 0 |
 
