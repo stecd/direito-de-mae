@@ -5,7 +5,7 @@ from pathlib import Path
 from fpdf import FPDF
 from fpdf.fonts import FontFace
 
-from brain import job_protection_end
+from brain import job_protection_end, leave_window
 
 FONT_DIR = Path("/System/Library/Fonts/Supplemental")
 _TTF = {"": "Arial.ttf", "B": "Arial Bold.ttf", "I": "Arial Italic.ttf"}
@@ -16,6 +16,7 @@ ROSE = (176, 48, 82)
 GREY = (90, 90, 90)
 LIGHT = (243, 245, 249)
 LINE = (200, 205, 215)
+IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 HELP = [
     ("Sindicato / FENATRAD", "Sindicato das trabalhadoras domésticas da sua cidade - fenatrad.org.br"),
@@ -128,6 +129,13 @@ def build(user: dict, out: Path) -> Path:
             pdf.cell(w / 2 - 4, 6, f"{dd:%d/%m/%Y}")
             pdf.cell(w / 2 - 4, 6, f"{end:%d/%m/%Y}", new_x="LMARGIN", new_y="NEXT")
             pdf.set_y(y + 17)
+            ls, le = leave_window(dd)
+            pdf.set_font(F, "", 9.5)
+            pdf.set_text_color(*GREY)
+            pdf.multi_cell(w, 5, _t(f"Licença-maternidade de 120 dias: pode começar a partir de {ls:%d/%m/%Y}; "
+                                    f"se começar na data prevista do parto, vai até {le:%d/%m/%Y} "
+                                    "(LC 150 art. 25; CLT art. 392, §1º)."), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
         except ValueError:
             pass
     rights = [
@@ -172,6 +180,32 @@ def build(user: dict, out: Path) -> Path:
                 r.cell(_t((e.get("summary") or "-") + extra))
                 r.cell(_t(e.get("article") or "-"))
     pdf.ln(6)
+
+    # Evidence thumbnails (images she sent, numbered like the timeline)
+    pics = [(i, out.parent / e["file"]) for i, e in enumerate(entries, 1)
+            if e.get("file") and Path(e["file"]).suffix.lower() in IMAGE_EXT
+            and (out.parent / e["file"]).exists()]
+    if pics:
+        section("Prints e fotos enviados")
+        tw, th, gap = (w - 2 * 6) / 3, 62, 6
+        for k, (i, path) in enumerate(pics):
+            col = k % 3
+            if col == 0:
+                if pdf.get_y() + th + 8 > pdf.h - 18:
+                    pdf.add_page()
+                y0 = pdf.get_y()
+            x = L + col * (tw + gap)
+            try:
+                pdf.image(str(path), x=x, y=y0, w=tw, h=th, keep_aspect_ratio=True)
+            except Exception:
+                continue
+            pdf.set_xy(x, y0 + th + 1)
+            pdf.set_font(F, "", 8)
+            pdf.set_text_color(*GREY)
+            pdf.cell(tw, 4, _t(f"Registro #{i}"), align="C")
+            if col == 2 or k == len(pics) - 1:
+                pdf.set_xy(L, y0 + th + 8)
+        pdf.ln(2)
 
     # Help
     section("Onde buscar ajuda (gratuito)")

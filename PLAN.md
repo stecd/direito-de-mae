@@ -111,7 +111,7 @@ LC 150/2015 art. 25 + parágrafo único; ADCT art. 10, II, b; CLT 391-A (aviso p
 **If behind at min 28:** drop TTS (text reply to voice). **At min 40:** drop images (log text/audio only). Never cut DOSSIÊ or APAGAR.
 
 ## Stretch (only after a frozen, working demo)
-leave start/end dates · letter to patroa · evidence thumbnails inside the PDF · backup web chat page · clarifying-question flow for a missing due date.
+Done: leave start/end dates · evidence thumbnails inside the PDF · backup web chat page · clarifying question for a missing due date. Open: letter to patroa (held: sending a letter tips off the employer, so it needs a decision from the owner and the sindicato first).
 
 ## Not in v1 (say "next" in the pitch)
 CLT/informal workers, proactive reminders, official Meta WhatsApp number, partnerships with sindicatos / FENATRAD / Defensoria.
