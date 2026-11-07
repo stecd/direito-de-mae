@@ -66,7 +66,7 @@
     <p class="eyebrow">Direito de Mãe • <a href="https://claude.ai/artifact/9btiTfJiBuWEKs7VJhybLr" target="_blank" rel="noopener">All Reviews</a></p>
     <h1>Forget the Voice</h1>
     <div class="chips">
-      <span class="chip wait" data-review-branch="review/forget-voice">Awaiting your pass · unmerged</span>
+      <span class="chip done" data-review-branch="review/forget-voice">✓ Reviewed · merged 06 Nov 2026</span>
       <span class="chip">Short review</span>
       <span class="chip">PR <a href="https://github.com/stecd/direito-de-mae/pull/5" target="_blank" rel="noopener">stecd/direito-de-mae#5</a></span>
     </div>
@@ -82,6 +82,14 @@
         <div class="now"><span class="tag">After</span><code>forget</code> deleted 1; history then held 0.</div></div></div>
     </div>
     <p>The welcome, consent and other fixed messages stay in the history. They hold nothing about her, they're already cached in <code>public/voice/</code>, and the free import script finds them there.</p>
+  </section>
+
+  <section id="by-id">
+    <h2>Delete by id <span class="chip" style="font-size:11px;vertical-align:middle">New in v2</span></h2>
+    <p>After your pass, deletion no longer matches text. ElevenLabs returns each reply's history id before the audio downloads, and the bot deletes exactly that item. Ten mothers getting word-for-word the same reply each delete their own item. There's no history search, so nothing can fall outside the window. Text matching is kept only as a fallback if the id is ever missing, and that case is logged as a warning.</p>
+    <div class="ba"><div class="pair"><p class="q">Checked live against ElevenLabs</p><div class="cols">
+      <div class="was"><span class="tag">Header id</span>Matched the single history item with that reply's text.</div>
+      <div class="now"><span class="tag">After forget_id</span>0 items left.</div></div></div></div>
   </section>
 
   <section>
@@ -128,6 +136,6 @@
   </section>
 
   <footer class="rev">
-    <b>Revisions</b><br>v1 (current): first publish, covers <code>8d42b55</code> after review round 2.
+    <b>Revisions</b><br>v2 (current): delete by ElevenLabs history id instead of text, after your pass; one section added after "What changed" (<a href="#by-id">jump to it</a>). Nothing else moved. Reviewed in round 3.<br>v1: first publish, covers <code>8d42b55</code> after review round 2.
   </footer>
 </div>

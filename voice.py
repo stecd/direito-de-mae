@@ -1,5 +1,6 @@
 """ElevenLabs: speech-to-text (Scribe) and text-to-speech, plus ffmpeg -> voice note."""
 import io
+import logging
 import os
 import subprocess
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 from elevenlabs.client import ElevenLabs
 
 client = ElevenLabs()  # reads ELEVENLABS_API_KEY
+log = logging.getLogger("direito.voice")
 
 
 def transcribe(audio: bytes) -> str:
@@ -52,7 +54,9 @@ def speak(text: str, out_ogg: Path, on_history_id=None) -> Path:
         output_format="mp3_44100_128",
     ) as resp:
         hid = resp.headers.get("history-item-id")
-        if hid and on_history_id:
+        if not hid:
+            log.warning("voice: ElevenLabs sent no history-item-id; deletion falls back to text matching")
+        elif on_history_id:
             on_history_id(hid)
         audio = b"".join(resp.data)
     mp3 = out_ogg.with_suffix(".mp3")
