@@ -501,7 +501,7 @@ def _onboard(phone: str, uid: str, user: dict, said: str, spoken: bool, is_new: 
         # First contact: we don't know yet whether she reads or listens, so ask in both.
         # Keep only what she said (text or transcript) to answer it after she agrees.
         p["onboarding"] = "mode"
-        if len(said.split()) > 3:  # a greeting ("oi", "bom dia") needs no second answer after consent
+        if not ob.is_greeting(said):  # "oi", "bom dia" need no second answer after consent
             p["pending_first"] = said.strip()[:600]
         store.save(uid, user)
         say(phone, uid, f"{ob.WELCOME}\n\n{ob.MODE_Q}", mode=ob.BOTH)
@@ -512,7 +512,7 @@ def _onboard(phone: str, uid: str, user: dict, said: str, spoken: bool, is_new: 
     if step in ("mode", "mode_change"):
         m = ob.parse_mode(said, spoken) if len(said.split()) <= 8 else None
         if m is None:
-            if step == "mode" and len(said.split()) > 3 and not p.get("pending_first"):
+            if step == "mode" and said.strip() and not ob.is_greeting(said) and not p.get("pending_first"):
                 p["pending_first"] = said.strip()[:600]
             store.save(uid, user)
             say(phone, uid, ob.MODE_AGAIN, mode=ob.BOTH)

@@ -69,7 +69,7 @@ def test_work_type_is_confirmed_and_correctable():
 
 
 def test_violated_right_beats_the_length_cap():
-    assert "mesmo que passe do limite" in brain.SYSTEM
+    assert "mesmo que passe do limite" in brain.SYSTEM and "500 caracteres" in brain.SYSTEM
 
 
 def test_known_work_type_reaches_claude():
@@ -101,3 +101,21 @@ def test_a_greeting_is_not_answered_twice(monkeypatch):
     bot.msg("sim")
     assert not bot.calls  # no Claude call (and no voice reply) just to say hello again
     store.delete(bot.uid)
+
+
+def test_short_real_first_message_is_still_answered(monkeypatch):
+    from test_safety import Bot
+    bot = Bot(monkeypatch)
+    bot.msg("fui demitida grávida")
+    bot.msg("1")
+    bot.msg("sim")
+    assert bot.calls and "demitida" in bot.calls[0][0]["text"]
+    store.delete(bot.uid)
+
+
+def test_greeting_list():
+    from onboarding import is_greeting
+    for g in ("oi", "Olá!", "bom dia", "Oi, tudo bem?", ""):
+        assert is_greeting(g), g
+    for q in ("fui demitida grávida", "me mandaram embora", "estou grávida, direitos?"):
+        assert not is_greeting(q), q

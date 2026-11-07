@@ -67,3 +67,13 @@ def is_no(text: str) -> bool:
 def is_yes(text: str) -> bool:
     tokens = norm(text).split()
     return bool(tokens) and not is_no(text) and any(w in _YES for w in tokens[:4])
+
+
+_GREETINGS = {"oi", "ola", "oie", "bom dia", "boa tarde", "boa noite", "tudo bem", "oi tudo bem", "ola tudo bem",
+              "oi bom dia", "oi boa tarde", "oi boa noite", "e ai", "alo", "hello", "hi"}
+
+
+def is_greeting(text: str) -> bool:
+    """Only a bare greeting. 'Fui demitida grávida' is three words and must still be answered."""
+    t = " ".join(norm(text).split())
+    return not t or t in _GREETINGS
