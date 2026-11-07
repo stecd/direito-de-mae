@@ -371,15 +371,16 @@ def spoken(text: str) -> tuple[bytes, bytes]:
     ogg_f, mp3_f = VOICE_CACHE / f"{key}.ogg", VOICE_CACHE / f"{key}.mp3"
     if text in FIXED and ogg_f.exists() and mp3_f.exists():
         return ogg_f.read_bytes(), mp3_f.read_bytes()
+    ids: list = []
     try:
         with tempfile.TemporaryDirectory() as tmp:
-            ogg = voice.speak(text, Path(tmp) / "r.ogg")
+            ogg = voice.speak(text, Path(tmp) / "r.ogg", on_history_id=ids.append)
             pair = ogg.read_bytes(), ogg.with_suffix(".mp3").read_bytes()
     finally:
-        # A personal reply: ElevenLabs logs its text in our account history as soon as it is
-        # requested, so delete it even when ffmpeg or the download fails afterwards.
+        # A personal reply: ElevenLabs keeps its text in our account history. Delete exactly the
+        # item it created (by id), even when the download or ffmpeg fails afterwards.
         if text not in FIXED:
-            forget_later(text)
+            forget_later(ids[0] if ids else None, text)
     if text in FIXED:
         VOICE_CACHE.mkdir(exist_ok=True)
         ogg_f.write_bytes(pair[0])
@@ -390,20 +391,22 @@ def spoken(text: str) -> tuple[bytes, bytes]:
 FORGET_IN_BACKGROUND = True  # tests set False to run it inline
 
 
-def _forget(text: str) -> None:
+def _forget(history_id: str | None, text: str) -> None:
     try:
-        if not voice.forget(text):
+        if history_id:
+            voice.forget_id(history_id)  # exactly this reply's item
+        elif not voice.forget(text):     # no id (header missing): fall back to matching the text
             log.error("voice: reply not found in ElevenLabs history, so not deleted")
     except Exception:
         log.error("voice: could not delete reply from ElevenLabs history:\n%s", scrubbed_tb())
 
 
-def forget_later(text: str) -> None:
-    """Delete off the reply's path, so she doesn't wait for two extra API calls."""
+def forget_later(history_id: str | None, text: str) -> None:
+    """Delete off the reply's path, so she doesn't wait for an extra API call."""
     if FORGET_IN_BACKGROUND:
-        threading.Thread(target=_forget, args=(text,), daemon=True).start()
+        threading.Thread(target=_forget, args=(history_id, text), daemon=True).start()
     else:
-        _forget(text)
+        _forget(history_id, text)
 
 
 def say(phone: str, uid: str, text: str, media: str | None = None, mode: str | None = None) -> None:

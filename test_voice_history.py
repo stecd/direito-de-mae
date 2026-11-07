@@ -51,17 +51,20 @@ def test_forget_pages_back_when_the_reply_is_not_in_the_newest_20():
 def test_reply_is_forgotten_even_when_speak_fails_after_elevenlabs_logged_it(monkeypatch, tmp_path):
     monkeypatch.setattr(app, "VOICE_CACHE", tmp_path)
     forgotten = []
-    monkeypatch.setattr(app.voice, "forget", lambda text: forgotten.append(text) or 1)
+    monkeypatch.setattr(app.voice, "forget_id", lambda hid: forgotten.append(hid))
 
-    def ffmpeg_crash(text, out):
+    def ffmpeg_crash(text, out, on_history_id=None):
+        on_history_id("hist-999")  # ElevenLabs answered, then ffmpeg crashed
         raise RuntimeError("ffmpeg failed")
     monkeypatch.setattr(app.voice, "speak", ffmpeg_crash)
     with pytest.raises(RuntimeError):
         app.spoken("Anotei: a patroa disse que vai te demitir")
-    assert forgotten == ["Anotei: a patroa disse que vai te demitir"]
+    assert forgotten == ["hist-999"]  # exactly the item ElevenLabs created
 
 
-def _fake_speak(text, out):
+def _fake_speak(text, out, on_history_id=None):
+    if on_history_id:
+        on_history_id("hist-123")
     out.write_bytes(b"ogg")
     out.with_suffix(".mp3").write_bytes(b"mp3")
     return out
@@ -71,19 +74,19 @@ def test_personal_reply_is_forgotten_fixed_message_is_not(monkeypatch, tmp_path)
     monkeypatch.setattr(app, "VOICE_CACHE", tmp_path)
     monkeypatch.setattr(app.voice, "speak", _fake_speak)
     forgotten = []
-    monkeypatch.setattr(app.voice, "forget", lambda text: forgotten.append(text) or 1)
+    monkeypatch.setattr(app.voice, "forget_id", lambda hid: forgotten.append(hid))
     app.spoken("Anotei: a patroa Joana gritou com você.")
     app.spoken(app.ob.SAFETY_TIP)
-    assert forgotten == ["Anotei: a patroa Joana gritou com você."]
+    assert forgotten == ["hist-123"]  # the personal reply's own item; the fixed one is kept
 
 
 def test_failed_deletion_is_logged_without_her_words_and_reply_still_sent(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(app, "VOICE_CACHE", tmp_path)
     monkeypatch.setattr(app.voice, "speak", _fake_speak)
 
-    def boom(text):
-        raise PermissionError(f"missing permission for {text}")
-    monkeypatch.setattr(app.voice, "forget", boom)
+    def boom(hid):
+        raise PermissionError("missing permission for Joana disse que vai te demitir")
+    monkeypatch.setattr(app.voice, "forget_id", boom)
     with caplog.at_level(logging.ERROR):
         assert app.spoken("Joana disse que vai te demitir") == (b"ogg", b"mp3")
     assert "could not delete" in caplog.text and "Joana" not in caplog.text
@@ -91,8 +94,52 @@ def test_failed_deletion_is_logged_without_her_words_and_reply_still_sent(monkey
 
 def test_reply_missing_from_history_is_reported(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(app, "VOICE_CACHE", tmp_path)
-    monkeypatch.setattr(app.voice, "speak", _fake_speak)
+    monkeypatch.setattr(app.voice, "speak", lambda text, out, on_history_id=None: _fake_speak(text, out))
     monkeypatch.setattr(app.voice, "forget", lambda text: 0)
     with caplog.at_level(logging.ERROR):
         app.spoken("uma resposta pessoal")
     assert "not found in ElevenLabs history" in caplog.text
+
+
+def test_ten_mothers_at_once_each_deletes_only_her_own_item(monkeypatch, tmp_path):
+    """Delete by id: identical texts or a crowded history can't make one mother's deletion
+    hit another's item."""
+    import itertools
+    monkeypatch.setattr(app, "VOICE_CACHE", tmp_path)
+    ids = itertools.count()
+
+    def speak(text, out, on_history_id=None):
+        on_history_id(f"item-{next(ids)}")
+        return _fake_speak(text, out)
+    monkeypatch.setattr(app.voice, "speak", speak)
+    deleted = []
+    monkeypatch.setattr(app.voice, "forget_id", lambda hid: deleted.append(hid))
+    monkeypatch.setattr(app.voice, "forget", lambda text: pytest.fail("text matching must not be used"))
+    for _ in range(10):
+        app.spoken("Anotei: a patroa disse que vai te mandar embora.")  # same words, ten mothers
+    assert deleted == [f"item-{i}" for i in range(10)]  # each exactly once, her own
+
+
+def test_speak_reports_the_history_id_before_downloading(monkeypatch, tmp_path):
+    """The id comes from the response header, before the audio is read."""
+    order = []
+
+    class Resp:
+        headers = {"history-item-id": "abc"}
+
+        @property
+        def data(self):
+            order.append("download")
+            return iter([b"mp3"])
+
+    class Ctx:
+        def __enter__(self):
+            return Resp()
+
+        def __exit__(self, *a):
+            return False
+    monkeypatch.setenv("ELEVENLABS_VOICE_ID", "v")
+    monkeypatch.setattr(voice.client.text_to_speech.with_raw_response, "convert", lambda **kw: Ctx())
+    monkeypatch.setattr(voice.subprocess, "run", lambda *a, **k: (tmp_path / "o.ogg").write_bytes(b"ogg"))
+    voice.speak("oi", tmp_path / "o.ogg", on_history_id=lambda hid: order.append(hid))
+    assert order == ["abc", "download"]

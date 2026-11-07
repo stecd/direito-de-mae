@@ -255,12 +255,13 @@ def test_reply_mode_is_honoured(monkeypatch):
     monkeypatch.setenv("ELEVENLABS_VOICE_ID", "v")
     monkeypatch.setenv("VOICE_REPLIES", "1")
 
-    def fake_speak(text, out):
+    def fake_speak(text, out, on_history_id=None):
         out.write_bytes(b"ogg")
         out.with_suffix(".mp3").write_bytes(b"mp3")
         return out
     monkeypatch.setattr(app.voice, "speak", fake_speak)
     monkeypatch.setattr(app.voice, "forget", lambda text: 1)
+    monkeypatch.setattr(app.voice, "forget_id", lambda hid: None)
     bot.sent.clear()
     app.say("p", bot.uid, "olá", mode="audio")
     assert len(bot.sent) == 1 and bot.sent[0][0] == "" and ".ogg" in bot.sent[0][1]
@@ -294,13 +295,14 @@ def test_fixed_messages_are_voiced_once_then_cached(monkeypatch, tmp_path):
     monkeypatch.setenv("ELEVENLABS_VOICE_ID", "v")
     calls = []
 
-    def fake_speak(text, out):
+    def fake_speak(text, out, on_history_id=None):
         calls.append(text)
         out.write_bytes(b"ogg")
         out.with_suffix(".mp3").write_bytes(b"mp3")
         return out
     monkeypatch.setattr(app.voice, "speak", fake_speak)
     monkeypatch.setattr(app.voice, "forget", lambda text: 1)
+    monkeypatch.setattr(app.voice, "forget_id", lambda hid: None)
     fixed = app.ob.WELCOME + "\n\n" + app.ob.MODE_Q
     assert app.spoken(fixed) == (b"ogg", b"mp3")
     assert app.spoken(fixed) == (b"ogg", b"mp3")

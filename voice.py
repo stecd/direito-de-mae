@@ -35,16 +35,28 @@ def forget(text: str, voice_id: str | None = None, history=None, pages: int = 3)
     return gone
 
 
-def speak(text: str, out_ogg: Path) -> Path:
-    """Text -> mp3 (ElevenLabs) -> OGG Opus (WhatsApp voice-note format)."""
-    chunks = client.text_to_speech.convert(
+def forget_id(history_item_id: str, history=None) -> None:
+    """Delete exactly one history item: the one ElevenLabs created for this reply."""
+    (history or client.history).delete(history_item_id)
+
+
+def speak(text: str, out_ogg: Path, on_history_id=None) -> Path:
+    """Text -> mp3 (ElevenLabs) -> OGG Opus (WhatsApp voice-note format).
+    on_history_id(id) is called as soon as ElevenLabs answers, before the audio downloads, with the
+    id of the history item it created, so the caller can delete exactly that item even if the
+    download or ffmpeg fails later."""
+    with client.text_to_speech.with_raw_response.convert(
         voice_id=os.environ["ELEVENLABS_VOICE_ID"],
         text=text,
         model_id="eleven_multilingual_v2",
         output_format="mp3_44100_128",
-    )
+    ) as resp:
+        hid = resp.headers.get("history-item-id")
+        if hid and on_history_id:
+            on_history_id(hid)
+        audio = b"".join(resp.data)
     mp3 = out_ogg.with_suffix(".mp3")
-    mp3.write_bytes(b"".join(chunks))
+    mp3.write_bytes(audio)
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
          "-c:a", "libopus", "-b:a", "32k", "-ac", "1", "-ar", "48000", str(out_ogg)],
