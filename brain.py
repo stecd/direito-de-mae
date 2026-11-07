@@ -2,7 +2,7 @@
 import calendar
 import json
 import os
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import anthropic
@@ -10,6 +10,8 @@ import anthropic
 MODEL = "claude-sonnet-5-5"
 LAWS = (Path(__file__).parent / "laws.md").read_text()
 DATE_TAG = "[DATA_ESTABILIDADE]"
+LEAVE_TAG = "[DATAS_LICENCA]"
+ASK_DUE = "Quando o nenê deve nascer? Me diga a data e eu calculo seus prazos."
 
 client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
 
@@ -23,11 +25,17 @@ def job_protection_end(due: date) -> date:
     return date(y, m, d)
 
 
+def leave_window(due: date) -> tuple[date, date]:
+    """Licença-maternidade (LC 150 art. 25 + CLT 392 §1º): earliest start is 28 days
+    before the birth; 120 days counted from the birth end on day 119 after it."""
+    return due - timedelta(days=28), due + timedelta(days=119)
+
+
 SYSTEM = f"""Você é o Direito de Mãe, um assistente no WhatsApp para trabalhadoras DOMÉSTICAS grávidas no Brasil (babá, empregada, cuidadora, diarista mensalista), com ou sem carteira assinada.
 
 REGRAS:
 1. Responda SOMENTE com base no documento LEIS abaixo. Sempre cite o artigo (ex: "LC 150 art. 25"). Se a pergunta não estiver coberta, diga "Não sei com certeza" e indique o sindicato e a Defensoria.
-2. NUNCA escreva uma data de fim de estabilidade você mesma. Quando a data for relevante, escreva exatamente {DATE_TAG} e o sistema preenche. Se ela disser a data prevista do parto, devolva em "due_date" (AAAA-MM-DD). Hoje é {{today}}.
+2. NUNCA escreva uma data de fim de estabilidade você mesma. Quando a data for relevante, escreva exatamente {DATE_TAG} e o sistema preenche. Se ela disser a data prevista do parto, devolva em "due_date" (AAAA-MM-DD). Para as datas da licença-maternidade, escreva exatamente {LEAVE_TAG}. Hoje é {{today}}.
 3. Quando um direito parecer violado: diga "Não sou advogada" e indique o sindicato das domésticas primeiro, depois a Defensoria Pública (contatos em LEIS).
 4. Português simples, frases curtas, no máximo 4 frases. Sem markdown, sem asteriscos, sem listas.
 5. Diário de provas: se ela relatar um fato, mandar um print, foto ou áudio sobre algo que aconteceu no trabalho, registre em "entry" e confirme com "Anotei: ...". Para áudios de outra pessoa (encaminhados), pergunte "Quem mandou e quando?". Se ela responder a essa pergunta, devolva os dados em "entry_update" para completar o último registro.
@@ -73,11 +81,15 @@ def think(history: list, content: list, entries: list | None = None) -> dict:
 
 
 def fill_date(reply: str, due_iso: str | None) -> str:
-    """Replace the date tag with the code-computed date."""
+    """Replace the date tags with code-computed dates. Without a due date, use the
+    rule in words and ask for the date once."""
     if not due_iso:
-        return reply.replace(DATE_TAG, "5 meses depois do parto")
-    end = job_protection_end(date.fromisoformat(due_iso))
-    text = end.strftime("%d/%m/%Y")
-    if DATE_TAG in reply:
-        return reply.replace(DATE_TAG, text)
-    return reply
+        asked = DATE_TAG in reply or LEAVE_TAG in reply
+        reply = (reply.replace(DATE_TAG, "5 meses depois do parto")
+                 .replace(LEAVE_TAG, "120 dias, que podem começar até 28 dias antes do parto"))
+        return f"{reply} {ASK_DUE}" if asked and ASK_DUE not in reply else reply
+    due = date.fromisoformat(due_iso)
+    start, end = leave_window(due)
+    leave = (f"120 dias, que podem começar a partir de {start:%d/%m/%Y}; "
+             f"se começar na data prevista do parto, vai até {end:%d/%m/%Y}")
+    return reply.replace(DATE_TAG, f"{job_protection_end(due):%d/%m/%Y}").replace(LEAVE_TAG, leave)

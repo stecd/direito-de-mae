@@ -5,7 +5,7 @@ from pathlib import Path
 
 os.environ.setdefault("ANTHROPIC_API_KEY", "test")
 
-from brain import _parse, fill_date, job_protection_end  # noqa: E402
+from brain import ASK_DUE, _parse, fill_date, job_protection_end, leave_window  # noqa: E402
 import dossie  # noqa: E402
 import store  # noqa: E402
 
@@ -70,3 +70,40 @@ def test_rate_limiter():
     rl = RateLimiter(limit=2, window=10)
     assert rl.allow("a", 0) and rl.allow("a", 1) and not rl.allow("a", 2)
     assert rl.allow("b", 2) and rl.allow("a", 11)
+
+
+def test_leave_window_and_tags():
+    assert leave_window(date(2027, 1, 20)) == (date(2026, 12, 23), date(2027, 5, 19))
+    out = fill_date("Licença: [DATAS_LICENCA].", "2027-01-20")
+    assert "23/12/2026" in out and "19/05/2027" in out and "[" not in out
+
+
+def test_missing_due_date_asks_once():
+    out = fill_date("Até [DATA_ESTABILIDADE]. Licença: [DATAS_LICENCA].", None)
+    assert out.count(ASK_DUE) == 1 and "[" not in out
+    assert ASK_DUE not in fill_date("Oi, tudo bem?", None)
+
+
+def test_pdf_embeds_evidence_images(tmp_path: Path):
+    from PIL import Image
+    Image.new("RGB", (400, 700), "white").save(tmp_path / "prova_1.jpg")
+    base = {"profile": {}, "entries": [{"summary": "print", "file": "prova_1.jpg"},
+                                       {"summary": "sumiu", "file": "missing.jpg"}]}
+    without = dossie.build({**base, "entries": base["entries"][1:]}, tmp_path / "a.pdf").stat().st_size
+    with_img = dossie.build(base, tmp_path / "b.pdf").stat().st_size
+    assert with_img > without
+
+
+def test_leave_tag_alone_still_asks():
+    out = fill_date("Sua licença: [DATAS_LICENCA].", None)
+    assert ASK_DUE in out and "28 dias" in out and "[" not in out
+
+
+def test_pdf_skips_corrupt_image_and_wraps_rows(tmp_path: Path):
+    from PIL import Image
+    for n in range(4):
+        Image.new("RGB", (3000, 4000), "white").save(tmp_path / f"p{n}.jpg")
+    (tmp_path / "broken.jpg").write_bytes(b"not an image")
+    entries = [{"summary": str(n), "file": f"p{n}.jpg"} for n in range(4)] + [{"summary": "x", "file": "broken.jpg"}]
+    out = dossie.build({"profile": {}, "entries": entries}, tmp_path / "d.pdf")
+    assert out.stat().st_size < 2_000_000  # photos were downscaled

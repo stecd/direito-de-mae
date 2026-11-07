@@ -15,7 +15,8 @@
 - Se for dispensada nesse período: pode pedir reintegração ou indenização do período.
 
 ## Licença-maternidade e salário-maternidade
-- LC 150/2015 art. 25: licença-maternidade de 120 dias, sem prejuízo do emprego e do salário.
+- LC 150/2015 art. 25: licença-maternidade de 120 dias, sem prejuízo do emprego e do salário, nos termos da CLT.
+- CLT art. 392, §1º (aplicável pela LC 150 art. 25): a licença pode começar entre o 28º dia antes do parto e o dia do parto. O sistema calcula essas datas.
 - Lei 8.213/91 art. 73, I: o salário-maternidade da empregada doméstica é pago diretamente pelo INSS (não pela patroa). Pedido pelo app ou site Meu INSS ou pelo telefone 135.
 
 ## Outros direitos básicos (LC 150/2015)
